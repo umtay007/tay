@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
-import Script from "next/script"
 
 type SpotifyData = {
   isPlaying: boolean
@@ -268,22 +267,6 @@ export default function Home() {
 
   return (
     <>
-      <Script
-        src="https://assets.guns.lol/guns_storm.js"
-        strategy="afterInteractive"
-        onLoad={() => {
-          if (typeof window !== "undefined" && (window as any).snowStorm) {
-            const snowStorm = (window as any).snowStorm
-            snowStorm.snowColor = "#93c5fd"
-            snowStorm.flakesMaxActive = 80
-            snowStorm.useTwinkleEffect = true
-            snowStorm.autoStart = true
-            snowStorm.freezeOnBlur = false
-            snowStorm.excludeMobile = false
-          }
-        }}
-      />
-
       <div
         className="fixed z-50 top-5 right-5 pointer-events-auto cursor-pointer transition-all duration-300"
         style={{
