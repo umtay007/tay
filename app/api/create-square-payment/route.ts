@@ -61,6 +61,11 @@ export async function POST(request: Request) {
         },
         checkout_options: {
           redirect_url: `${baseUrl}/pay-me2/success`,
+          accepted_payment_methods: {
+            cash_app_pay: true,
+            apple_pay: true,
+            google_pay: true,
+          },
         },
       }),
     })
