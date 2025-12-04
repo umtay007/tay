@@ -44,7 +44,6 @@ export default function PayMePage() {
   const [currentSongUrl, setCurrentSongUrl] = useState<string | undefined>(undefined)
   const [pageViews, setPageViews] = useState<number | null>(null)
   const hasIncrementedViews = useRef(false)
-  const [squareLoaded, setSquareLoaded] = useState(false)
 
   // Check if there was a canceled payment
   const canceled = searchParams.get("canceled") === "true"
@@ -55,18 +54,6 @@ export default function PayMePage() {
       setAmount(value)
     }
   }
-
-  useEffect(() => {
-    const script = document.createElement("script")
-    script.src = "https://web.squarecdn.com/v1/square.js"
-    script.async = true
-    script.onload = () => setSquareLoaded(true)
-    document.body.appendChild(script)
-
-    return () => {
-      document.body.removeChild(script)
-    }
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -94,72 +81,22 @@ export default function PayMePage() {
       return
     }
 
-    if (paymentMethod === "wallets") {
-      if (!squareLoaded || !window.Square) {
-        setError("Payment system not loaded. Please refresh and try again.")
-        return
-      }
-
-      setLoading(true)
-      setError(null)
-
-      try {
-        const payments = window.Square.payments(
-          process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID!,
-          process.env.SQUARE_LOCATION_ID!,
-        )
-
-        const paymentRequest = payments.paymentRequest({
-          countryCode: "US",
-          currencyCode: "USD",
-          total: {
-            amount: amount,
-            label: "Total",
-          },
-        })
-
-        const applePay = await payments.applePay(paymentRequest)
-        const result = await applePay.tokenize()
-
-        if (result.status === "OK") {
-          // Send token to your backend
-          const response = await fetch("/api/process-square-payment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sourceId: result.token,
-              amount: Number.parseFloat(amount),
-            }),
-          })
-
-          if (response.ok) {
-            router.push("/pay-me2/success")
-          } else {
-            throw new Error("Payment failed")
-          }
-        } else {
-          throw new Error("Tokenization failed")
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Payment failed")
-      } finally {
-        setLoading(false)
-      }
-      return
-    }
-
     setLoading(true)
     setError(null)
 
     try {
+      // Configure which payment methods to show based on button selected
       let acceptedPaymentMethods
+      
       if (paymentMethod === "cashapp") {
+        // Cash App button: Only show Cash App Pay
         acceptedPaymentMethods = {
           cash_app_pay: true,
           apple_pay: false,
           google_pay: false,
         }
       } else if (paymentMethod === "wallets") {
+        // Wallets button: Only show Apple Pay & Google Pay
         acceptedPaymentMethods = {
           cash_app_pay: false,
           apple_pay: true,
@@ -175,7 +112,7 @@ export default function PayMePage() {
         body: JSON.stringify({
           amount: Number.parseFloat(amount),
           paymentMethod,
-          acceptedPaymentMethods, // Send the specific payment method configuration
+          acceptedPaymentMethods,
         }),
       })
 
@@ -288,7 +225,6 @@ export default function PayMePage() {
 
       <div className="z-10 w-full max-w-md">
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-6 sm:mb-8 text-center relative">
-          {/* Added AnimatedText component */}
           <AnimatedText>Pay Me</AnimatedText>
         </h1>
         <Card className="w-full bg-card/10 backdrop-blur-md rounded-2xl overflow-hidden shadow-lg">
