@@ -44,15 +44,13 @@ export async function POST(request: Request) {
 
     console.log("Importing Square SDK...")
     const square = await import("square")
-    const { Client, Environment } = square
+    const { Client } = square
 
     console.log("Creating Square client...")
+    // Use string literals instead of Environment enum
     const client = new Client({
       accessToken: process.env.SQUARE_ACCESS_TOKEN,
-      environment:
-        process.env.SQUARE_ENVIRONMENT === "production"
-          ? Environment.Production
-          : Environment.Sandbox,
+      environment: process.env.SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox",
     })
 
     const amountInCents = Math.round(amount * 100)
@@ -91,10 +89,12 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("=== ERROR ===")
-    console.error("Type:", error.constructor.name)
+    console.error("Type:", error.constructor?.name || "Unknown")
     console.error("Message:", error.message)
     console.error("Status:", error.statusCode)
-    console.error("Errors:", JSON.stringify(error.errors, null, 2))
+    if (error.errors) {
+      console.error("Errors:", JSON.stringify(error.errors, null, 2))
+    }
 
     return NextResponse.json(
       {
