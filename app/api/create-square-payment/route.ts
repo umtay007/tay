@@ -2,8 +2,7 @@
 
 import { NextResponse } from "next/server"
 import crypto from "crypto"
-// ✅ Use ESM import for the new SDK
-import { SquareClient, SquareEnvironment } from "square"
+import { Client, Environment } from "square"
 
 export async function POST(request: Request) {
   try {
@@ -13,12 +12,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
     }
 
-    const client = new SquareClient({
-      token: process.env.SQUARE_ACCESS_TOKEN!,
+    // Initialize Square client with correct imports
+    const client = new Client({
+      accessToken: process.env.SQUARE_ACCESS_TOKEN!,
       environment:
         process.env.SQUARE_ENVIRONMENT === "production"
-          ? SquareEnvironment.Production
-          : SquareEnvironment.Sandbox,
+          ? Environment.Production
+          : Environment.Sandbox,
     })
 
     // Convert amount to cents
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       cashAppPay: paymentMethod === "cashapp",
     }
 
-    // ✅ Use `checkoutApi`, not `checkout`
+    // Use the checkoutApi from the client
     const response = await client.checkoutApi.createPaymentLink({
       idempotencyKey: crypto.randomUUID(),
       quickPay: {
@@ -43,7 +43,6 @@ export async function POST(request: Request) {
         locationId: process.env.SQUARE_LOCATION_ID!,
       },
       checkoutOptions: {
-        // ✅ Correct property name is `acceptedPaymentMethods`
         acceptedPaymentMethods,
         redirectUrl: `${
           process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
@@ -51,15 +50,15 @@ export async function POST(request: Request) {
       },
     })
 
-    if (!response.paymentLink?.url) {
+    if (!response.result.paymentLink?.url) {
       throw new Error("Failed to create payment link")
     }
 
-    const successResponse = NextResponse.json({ url: response.paymentLink.url })
+    const successResponse = NextResponse.json({ url: response.result.paymentLink.url })
     successResponse.headers.set("Access-Control-Allow-Origin", "*")
     return successResponse
   } catch (error) {
-    console.error("[v0] Square payment error:", error)
+    console.error("Square payment error:", error)
     const errorResponse = NextResponse.json(
       {
         error:
