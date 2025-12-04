@@ -1,70 +1,81 @@
+// app/api/create-square-payment/route.ts
+
 import { NextResponse } from "next/server"
 import crypto from "crypto"
-import { Client as SquareClient } from "square"
 
 export async function POST(request: Request) {
   try {
-    console.log("[v0] Creating Square payment link...")
-
-    const { amount } = await request.json()
-    console.log("[v0] Amount received:", amount)
+    const { amount, paymentMethod = "cashapp" } = await request.json()
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
     }
 
+    if (!process.env.SQUARE_ACCESS_TOKEN) {
+      return NextResponse.json({ error: "Missing Square Access Token" }, { status: 500 })
+    }
+
+    if (!process.env.SQUARE_LOCATION_ID) {
+      return NextResponse.json({ error: "Missing Square Location ID" }, { status: 500 })
+    }
+
+    // Dynamic import for Square SDK
+    const square = await import("square")
+    const { Client: SquareClient, Environment: SquareEnvironment } = square
+
     const client = new SquareClient({
-      environment: process.env.SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox",
-      accessToken: process.env.SQUARE_ACCESS_TOKEN!,
+      accessToken: process.env.SQUARE_ACCESS_TOKEN,
+      environment:
+        process.env.SQUARE_ENVIRONMENT === "production"
+          ? SquareEnvironment.Production
+          : SquareEnvironment.Sandbox,
     })
 
     const amountInCents = Math.round(amount * 100)
-    console.log("[v0] Amount in cents:", amountInCents)
 
-    const response = await client.checkoutApi.createPaymentLink({
+    // Simple request structure - let Square handle available payment methods
+    const requestBody = {
       idempotencyKey: crypto.randomUUID(),
-      checkoutOptions: {
-        askForShippingAddress: false,
-        enableCoupon: false,
-        enableLoyalty: true,
-        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/checkout/success`,
-        acceptedPaymentMethods: {
-          applePay: true,
-          cashAppPay: true,
-          googlePay: true,
-        },
-      },
-      description: "Payment",
-      paymentNote: "Thank you!",
       quickPay: {
-        locationId: process.env.SQUARE_LOCATION_ID!,
         name: "Payment",
+        locationId: process.env.SQUARE_LOCATION_ID,
         priceMoney: {
           amount: BigInt(amountInCents),
           currency: "USD",
         },
       },
-    })
+      checkoutOptions: {
+        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/pay-me2/success`,
+      },
+    }
 
-    console.log("[v0] Payment link created successfully")
+    console.log("Creating Square payment link for amount:", amount)
+
+    const response = await client.checkoutApi.createPaymentLink(requestBody)
 
     if (!response.result.paymentLink?.url) {
       throw new Error("Failed to create payment link")
     }
 
-    const successResponse = NextResponse.json({ url: response.result.paymentLink.url })
-    successResponse.headers.set("Access-Control-Allow-Origin", "*")
-    return successResponse
-  } catch (error) {
-    console.error("[v0] Square payment error:", error)
-    const errorResponse = NextResponse.json(
+    console.log("✓ Payment link created successfully")
+
+    return NextResponse.json({
+      url: response.result.paymentLink.url,
+    })
+  } catch (error: any) {
+    console.error("Square payment error:", {
+      message: error.message,
+      statusCode: error.statusCode,
+      errors: error.errors,
+    })
+
+    return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to create payment",
+        error: error.message || "Failed to create payment",
+        details: error.errors?.[0]?.detail || undefined,
       },
-      { status: 500 },
+      { status: 500 }
     )
-    errorResponse.headers.set("Access-Control-Allow-Origin", "*")
-    return errorResponse
   }
 }
 
