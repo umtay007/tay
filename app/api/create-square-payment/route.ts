@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 // Function to send Discord notification
 async function notifyDiscord(amount: number, paymentUrl: string) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL
-  
+
   if (!webhookUrl) {
     console.log("No Discord webhook configured, skipping notification")
     return
@@ -21,12 +21,11 @@ async function notifyDiscord(amount: number, paymentUrl: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        content: "@everyone 💰 **NEW PAYMENT INCOMING!** 💰",
         embeds: [
           {
             title: "🎉 Payment Created!",
             description: `Someone just started a payment for **$${amount.toFixed(2)}**!`,
-            color: 0x00ff00, // Green color
+            color: 0x0099ff, // Blue color
             fields: [
               {
                 name: "Amount",
@@ -61,12 +60,12 @@ async function notifyDiscord(amount: number, paymentUrl: string) {
 
 export async function POST(request: Request) {
   console.log("=== Square Payment Request (HTTP API) ===")
-  
+
   try {
     const body = await request.json()
-    const { amount } = body
-    
-    console.log("Amount:", amount)
+    const { amount, paymentMethod } = body
+
+    console.log("Amount:", amount, "Payment Method:", paymentMethod)
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
@@ -90,17 +89,22 @@ export async function POST(request: Request) {
     console.log("Env:", environment, "Location:", locationId)
 
     // Call Square REST API directly
-    const squareApiUrl = environment === "production" 
-      ? "https://connect.squareup.com"
-      : "https://connect.squareupsandbox.com"
+    const squareApiUrl =
+      environment === "production" ? "https://connect.squareup.com" : "https://connect.squareupsandbox.com"
 
     const amountInCents = Math.round(amount * 100)
+
+    const acceptedPaymentMethods: any = {
+      cash_app_pay: paymentMethod === "cashApp" || !paymentMethod,
+      apple_pay: paymentMethod === "applePay" || !paymentMethod,
+      google_pay: paymentMethod === "googlePay" || !paymentMethod,
+    }
 
     const response = await fetch(`${squareApiUrl}/v2/online-checkout/payment-links`, {
       method: "POST",
       headers: {
         "Square-Version": "2024-12-18",
-        "Authorization": `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -115,27 +119,23 @@ export async function POST(request: Request) {
         },
         checkout_options: {
           redirect_url: `${baseUrl}/pay-me2/success`,
-          accepted_payment_methods: {
-            cash_app_pay: true,
-            apple_pay: true,
-            google_pay: true,
-          },
+          accepted_payment_methods: acceptedPaymentMethods,
         },
       }),
     })
 
     const data = await response.json()
-    
+
     console.log("Square response status:", response.status)
 
     if (!response.ok) {
       console.error("Square error:", data)
       return NextResponse.json(
-        { 
+        {
           error: data.errors?.[0]?.detail || "Payment creation failed",
           details: data.errors,
         },
-        { status: response.status }
+        { status: response.status },
       )
     }
 
@@ -152,13 +152,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       url: data.payment_link.url,
     })
-
   } catch (error: any) {
     console.error("Error:", error.message)
-    return NextResponse.json(
-      { error: error.message || "Payment creation failed" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error.message || "Payment creation failed" }, { status: 500 })
   }
 }
 
