@@ -152,6 +152,21 @@ export default function PayMePage() {
     setError(null)
 
     try {
+      let acceptedPaymentMethods
+      if (paymentMethod === "cashapp") {
+        acceptedPaymentMethods = {
+          cash_app_pay: true,
+          apple_pay: false,
+          google_pay: false,
+        }
+      } else if (paymentMethod === "wallets") {
+        acceptedPaymentMethods = {
+          cash_app_pay: false,
+          apple_pay: true,
+          google_pay: true,
+        }
+      }
+
       const response = await fetch("/api/create-square-payment", {
         method: "POST",
         headers: {
@@ -160,6 +175,7 @@ export default function PayMePage() {
         body: JSON.stringify({
           amount: Number.parseFloat(amount),
           paymentMethod,
+          acceptedPaymentMethods, // Send the specific payment method configuration
         }),
       })
 
