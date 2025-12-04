@@ -3,54 +3,56 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 
-// Use require to import Square SDK
-const { SquareClient, SquareEnvironment } = require("square")
-
 export async function POST(request: Request) {
   try {
-    const { amount, paymentMethod } = await request.json()
+    const { amount, paymentMethod = "cashapp" } = await request.json()
+
+    console.log("=== Square Payment Request ===")
+    console.log("Amount:", amount)
+    console.log("Payment Method:", paymentMethod)
+    console.log("Environment:", process.env.SQUARE_ENVIRONMENT || "sandbox")
+    console.log("Access Token exists:", !!process.env.SQUARE_ACCESS_TOKEN)
+    console.log("Location ID:", process.env.SQUARE_LOCATION_ID)
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
     }
 
-    // Validate environment variables
     if (!process.env.SQUARE_ACCESS_TOKEN) {
-      console.error("Missing SQUARE_ACCESS_TOKEN")
-      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+      return NextResponse.json({ error: "Missing Square Access Token" }, { status: 500 })
     }
 
     if (!process.env.SQUARE_LOCATION_ID) {
-      console.error("Missing SQUARE_LOCATION_ID")
-      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+      return NextResponse.json({ error: "Missing Square Location ID" }, { status: 500 })
     }
+
+    // Dynamic import to avoid SSR issues
+    const square = await import("square")
+    const { Client: SquareClient, Environment: SquareEnvironment } = square
 
     const client = new SquareClient({
       accessToken: process.env.SQUARE_ACCESS_TOKEN,
       environment:
-        process.env.SQUARE_ENVIRONMENT === "production" 
-          ? SquareEnvironment.Production 
+        process.env.SQUARE_ENVIRONMENT === "production"
+          ? SquareEnvironment.Production
           : SquareEnvironment.Sandbox,
     })
 
-    // Convert amount to cents
     const amountInCents = Math.round(amount * 100)
 
-    // Map payment methods
-    const acceptedPaymentMethods = {
-      applePay: paymentMethod === "wallets" || paymentMethod === "apple",
-      googlePay: paymentMethod === "wallets" || paymentMethod === "google",
-      cashAppPay: paymentMethod === "cashapp",
+    // Build accepted payment methods
+    const acceptedPaymentMethods: any = {}
+    
+    if (paymentMethod === "cashapp") {
+      acceptedPaymentMethods.cashAppPay = true
+    } else if (paymentMethod === "wallets") {
+      acceptedPaymentMethods.applePay = true
+      acceptedPaymentMethods.googlePay = true
     }
 
-    console.log("Creating payment link with:", {
-      amount: amountInCents,
-      paymentMethod,
-      acceptedPaymentMethods,
-      locationId: process.env.SQUARE_LOCATION_ID,
-    })
+    console.log("Accepted Payment Methods:", acceptedPaymentMethods)
 
-    const response = await client.checkoutApi.createPaymentLink({
+    const requestBody = {
       idempotencyKey: crypto.randomUUID(),
       quickPay: {
         name: "Payment",
@@ -62,39 +64,46 @@ export async function POST(request: Request) {
       },
       checkoutOptions: {
         redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/pay-me2/success`,
-        acceptedPaymentMethods,
+        ...(Object.keys(acceptedPaymentMethods).length > 0 && { acceptedPaymentMethods }),
       },
-    })
+    }
 
-    console.log("Square API response:", response.result)
+    console.log("Request Body:", JSON.stringify(requestBody, (key, value) =>
+      typeof value === 'bigint' ? value.toString() : value
+    ))
+
+    const response = await client.checkoutApi.createPaymentLink(requestBody)
+
+    console.log("Square Response Status:", response.statusCode)
+    console.log("Payment Link Created:", !!response.result.paymentLink)
 
     if (!response.result.paymentLink?.url) {
+      console.error("No payment link URL in response:", response.result)
       throw new Error("Failed to create payment link - no URL returned")
     }
 
-    const successResponse = NextResponse.json({ 
+    console.log("Payment Link URL:", response.result.paymentLink.url)
+
+    return NextResponse.json({
       url: response.result.paymentLink.url,
-      orderId: response.result.paymentLink.orderId 
+      orderId: response.result.paymentLink.orderId,
     })
-    successResponse.headers.set("Access-Control-Allow-Origin", "*")
-    return successResponse
   } catch (error: any) {
-    console.error("Square payment error details:", {
-      message: error.message,
-      errors: error.errors,
-      statusCode: error.statusCode,
-      body: error.body,
-    })
-    
-    const errorResponse = NextResponse.json(
+    console.error("=== Square Payment Error ===")
+    console.error("Error Type:", error.constructor.name)
+    console.error("Error Message:", error.message)
+    console.error("Status Code:", error.statusCode)
+    console.error("Errors:", JSON.stringify(error.errors, null, 2))
+    console.error("Full Error:", error)
+
+    return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to create payment",
-        details: error.errors || error.body || undefined,
+        error: error.message || "Failed to create payment",
+        details: error.errors || undefined,
+        statusCode: error.statusCode || undefined,
       },
-      { status: 500 },
+      { status: 500 }
     )
-    errorResponse.headers.set("Access-Control-Allow-Origin", "*")
-    return errorResponse
   }
 }
 
