@@ -5,6 +5,60 @@ import { randomUUID } from "crypto"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+// Function to send Discord notification
+async function notifyDiscord(amount: number, paymentUrl: string) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL
+  
+  if (!webhookUrl) {
+    console.log("No Discord webhook configured, skipping notification")
+    return
+  }
+
+  try {
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content: "@everyone 💰 **NEW PAYMENT INCOMING!** 💰",
+        embeds: [
+          {
+            title: "🎉 Payment Created!",
+            description: `Someone just started a payment for **$${amount.toFixed(2)}**!`,
+            color: 0x00ff00, // Green color
+            fields: [
+              {
+                name: "Amount",
+                value: `$${amount.toFixed(2)} USD`,
+                inline: true,
+              },
+              {
+                name: "Status",
+                value: "⏳ Pending",
+                inline: true,
+              },
+              {
+                name: "Payment Link",
+                value: `[View Checkout](${paymentUrl})`,
+                inline: false,
+              },
+            ],
+            timestamp: new Date().toISOString(),
+            footer: {
+              text: "Square Payment System",
+            },
+          },
+        ],
+      }),
+    })
+    console.log("✅ Discord notification sent!")
+  } catch (error) {
+    console.error("Failed to send Discord notification:", error)
+    // Don't fail the payment if Discord notification fails
+  }
+}
+
 export async function POST(request: Request) {
   console.log("=== Square Payment Request (HTTP API) ===")
   
@@ -91,6 +145,9 @@ export async function POST(request: Request) {
     }
 
     console.log("✅ Payment link created:", data.payment_link.url)
+
+    // Send Discord notification (non-blocking)
+    notifyDiscord(amount, data.payment_link.url).catch(console.error)
 
     return NextResponse.json({
       url: data.payment_link.url,
