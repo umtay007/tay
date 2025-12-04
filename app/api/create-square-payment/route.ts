@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server"
 import crypto from "crypto"
-import { Client, Environment } from "square"
+import { Client } from "square"
 
 export async function POST(request: Request) {
   try {
@@ -12,13 +12,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
     }
 
-    // Initialize Square client with correct imports
+    // Initialize Square client
     const client = new Client({
       accessToken: process.env.SQUARE_ACCESS_TOKEN!,
       environment:
         process.env.SQUARE_ENVIRONMENT === "production"
-          ? Environment.Production
-          : Environment.Sandbox,
+          ? "production"
+          : "sandbox",
     })
 
     // Convert amount to cents
