@@ -3,6 +3,9 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 
+// Force Node.js runtime (not Edge)
+export const runtime = 'nodejs'
+
 // Add a GET endpoint for testing
 export async function GET(request: Request) {
   console.log("GET /api/create-square-payment - Test endpoint hit")
@@ -42,16 +45,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing Square Location ID" }, { status: 500 })
     }
 
-    console.log("Importing Square SDK...")
-    const square = await import("square")
-    const { Client } = square
+    console.log("Loading Square SDK with require()...")
+    // Use require instead of import for better compatibility
+    const { Client } = require("square")
+    console.log("Square Client loaded:", typeof Client)
 
     console.log("Creating Square client...")
-    // Use string literals instead of Environment enum
     const client = new Client({
       accessToken: process.env.SQUARE_ACCESS_TOKEN,
       environment: process.env.SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox",
     })
+    console.log("Client created successfully")
 
     const amountInCents = Math.round(amount * 100)
     console.log("Amount in cents:", amountInCents)
@@ -91,6 +95,7 @@ export async function POST(request: Request) {
     console.error("=== ERROR ===")
     console.error("Type:", error.constructor?.name || "Unknown")
     console.error("Message:", error.message)
+    console.error("Stack:", error.stack)
     console.error("Status:", error.statusCode)
     if (error.errors) {
       console.error("Errors:", JSON.stringify(error.errors, null, 2))
