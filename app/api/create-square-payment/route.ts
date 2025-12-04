@@ -5,8 +5,8 @@ import { randomUUID } from "crypto"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-// Function to send Discord notification
-async function notifyDiscord(amount: number, paymentUrl: string) {
+// Function to send Discord notification for payment STARTED
+async function notifyDiscordStarted(amount: number, paymentUrl: string) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL
 
   if (!webhookUrl) {
@@ -21,10 +21,11 @@ async function notifyDiscord(amount: number, paymentUrl: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        // NO @everyone ping for started payments
         embeds: [
           {
-            title: "🎉 Payment Created!",
-            description: `Someone just started a payment for **$${amount.toFixed(2)}**!`,
+            title: "💳 Payment Started",
+            description: `Someone is checking out for **$${amount.toFixed(2)}**`,
             color: 0x0099ff, // Blue color
             fields: [
               {
@@ -51,10 +52,9 @@ async function notifyDiscord(amount: number, paymentUrl: string) {
         ],
       }),
     })
-    console.log("✅ Discord notification sent!")
+    console.log("✅ Discord notification sent (started)!")
   } catch (error) {
     console.error("Failed to send Discord notification:", error)
-    // Don't fail the payment if Discord notification fails
   }
 }
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 
     const accessToken = process.env.SQUARE_ACCESS_TOKEN
     const locationId = process.env.SQUARE_LOCATION_ID
-    const environment = process.env.SQUARE_ENVIRONMENT || "sandbox"
+    const environment = process.env.SQUARE_ENVIRONMENT || "production"
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
 
     if (!accessToken) {
@@ -88,7 +88,6 @@ export async function POST(request: Request) {
 
     console.log("Env:", environment, "Location:", locationId)
 
-    // Call Square REST API directly
     const squareApiUrl =
       environment === "production" ? "https://connect.squareup.com" : "https://connect.squareupsandbox.com"
 
@@ -121,7 +120,7 @@ export async function POST(request: Request) {
           redirect_url: `${baseUrl}/pay-me2/success`,
           accepted_payment_methods: {
             ...paymentMethods,
-            card: false, // Disable credit/debit cards
+            card: false,
           },
           ask_for_shipping_address: false,
           merchant_support_email: undefined,
@@ -152,8 +151,8 @@ export async function POST(request: Request) {
 
     console.log("✅ Payment link created:", data.payment_link.url)
 
-    // Send Discord notification (non-blocking)
-    notifyDiscord(amount, data.payment_link.url).catch(console.error)
+    // Send Discord notification for STARTED payment (blue, no ping)
+    notifyDiscordStarted(amount, data.payment_link.url).catch(console.error)
 
     return NextResponse.json({
       url: data.payment_link.url,

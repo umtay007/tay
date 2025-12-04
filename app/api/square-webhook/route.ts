@@ -1,13 +1,23 @@
+// app/api/square-webhook/route.ts
 import { NextResponse } from "next/server"
+import crypto from "crypto"
 
 export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
 
-async function notifyDiscordCompleted(amount: number, orderId: string) {
+// Function to verify Square webhook signature
+function verifySquareSignature(body: string, signature: string, signatureKey: string, url: string): boolean {
+  const hmac = crypto.createHmac("sha256", signatureKey)
+  hmac.update(url + body)
+  const hash = hmac.digest("base64")
+  return hash === signature
+}
+
+// Function to send Discord notification for COMPLETED payment
+async function notifyDiscordCompleted(amount: number, paymentId: string, orderId: string) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL
 
   if (!webhookUrl) {
-    console.log("No Discord webhook configured, skipping notification")
+    console.log("No Discord webhook configured")
     return
   }
 
@@ -18,11 +28,11 @@ async function notifyDiscordCompleted(amount: number, orderId: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        content: "@everyone 💰 **PAYMENT COMPLETED!** 💰",
+        content: "@everyone 💰 **PAYMENT COMPLETED!** 💰", // PING @everyone!
         embeds: [
           {
-            title: "✅ Payment Completed!",
-            description: `A payment of **$${amount.toFixed(2)}** has been successfully completed!`,
+            title: "✅ Payment Successful!",
+            description: `Someone just paid **$${amount.toFixed(2)}**! 🎉`,
             color: 0x00ff00, // Green color
             fields: [
               {
@@ -34,6 +44,11 @@ async function notifyDiscordCompleted(amount: number, orderId: string) {
                 name: "Status",
                 value: "✅ Completed",
                 inline: true,
+              },
+              {
+                name: "Payment ID",
+                value: paymentId,
+                inline: false,
               },
               {
                 name: "Order ID",
@@ -49,39 +64,74 @@ async function notifyDiscordCompleted(amount: number, orderId: string) {
         ],
       }),
     })
-    console.log("✅ Discord completion notification sent!")
+    console.log("✅ Discord notification sent (completed)!")
   } catch (error) {
     console.error("Failed to send Discord notification:", error)
   }
 }
 
-// Square webhook handler
 export async function POST(request: Request) {
+  console.log("=== Square Webhook Received ===")
+
   try {
-    const body = await request.json()
+    const body = await request.text()
+    const signature = request.headers.get("x-square-hmacsha256-signature") || ""
+    const webhookSignatureKey = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY
 
-    console.log("[v0] Square webhook received:", JSON.stringify(body, null, 2))
-
-    // Check if this is a payment completed event
-    if (body.type === "payment.created" || body.type === "payment.updated") {
-      const payment = body.data?.object?.payment
-
-      if (payment && payment.status === "COMPLETED") {
-        const amountInCents = payment.amount_money?.amount || 0
-        const amount = amountInCents / 100
-        const orderId = payment.order_id || payment.id
-
-        console.log("[v0] Payment completed:", { amount, orderId })
-
-        // Send Discord notification with ping
-        await notifyDiscordCompleted(amount, orderId)
+    // Verify webhook signature if configured
+    if (webhookSignatureKey && signature) {
+      const url = `${process.env.NEXT_PUBLIC_BASE_URL}/api/square-webhook`
+      const isValid = verifySquareSignature(body, signature, webhookSignatureKey, url)
+      
+      if (!isValid) {
+        console.error("Invalid webhook signature")
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
       }
     }
 
-    // Return 200 to acknowledge receipt
-    return NextResponse.json({ success: true })
+    const event = JSON.parse(body)
+    console.log("Webhook event type:", event.type)
+
+    // Handle payment.updated event
+    if (event.type === "payment.updated") {
+      const payment = event.data?.object?.payment
+
+      if (!payment) {
+        console.log("No payment data in webhook")
+        return NextResponse.json({ message: "No payment data" })
+      }
+
+      console.log("Payment status:", payment.status)
+      console.log("Payment ID:", payment.id)
+
+      // Only notify on COMPLETED payments
+      if (payment.status === "COMPLETED") {
+        const amountInCents = payment.amount_money?.amount || 0
+        const amount = amountInCents / 100
+        const paymentId = payment.id
+        const orderId = payment.order_id || "N/A"
+
+        console.log("💰 Payment completed! Amount:", amount)
+
+        // Send Discord notification (green embed + @everyone ping)
+        await notifyDiscordCompleted(amount, paymentId, orderId)
+      }
+    }
+
+    return NextResponse.json({ message: "Webhook processed" })
+
   } catch (error: any) {
-    console.error("[v0] Webhook error:", error)
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 })
+    console.error("Webhook processing error:", error.message)
+    return NextResponse.json(
+      { error: "Webhook processing failed" },
+      { status: 500 }
+    )
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ 
+    message: "Square Webhook Endpoint",
+    status: "Active" 
+  })
 }
