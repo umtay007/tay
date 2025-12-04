@@ -32,7 +32,9 @@ type SpotifyData = {
 
 export default function PayMePage() {
   const [amount, setAmount] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState<"cashapp" | "wallets" | "paypal" | "venmo">("cashapp")
+  const [paymentMethod, setPaymentMethod] = useState<"cashapp" | "wallets" | "paypal" | "venmo" | "ach" | "giftcard">(
+    "cashapp",
+  )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -45,8 +47,80 @@ export default function PayMePage() {
   const [pageViews, setPageViews] = useState<number | null>(null)
   const hasIncrementedViews = useRef(false)
 
-  // Check if there was a canceled payment
+  const paymentsRef = useRef<any>(null)
+  const achRef = useRef<any>(null)
+  const giftCardRef = useRef<any>(null)
+
   const canceled = searchParams.get("canceled") === "true"
+
+  useEffect(() => {
+    const initializeSquare = async () => {
+      if (!window.Square) {
+        const script = document.createElement("script")
+        script.src = "https://web.squarecdn.com/v1/square.js"
+        script.async = true
+        document.head.appendChild(script)
+
+        script.onload = async () => {
+          if (!window.Square) return
+
+          try {
+            const payments = window.Square.payments(
+              process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID!,
+              process.env.SQUARE_LOCATION_ID!,
+            )
+            paymentsRef.current = payments
+          } catch (error) {
+            console.error("[v0] Error initializing Square payments:", error)
+          }
+        }
+      } else if (!paymentsRef.current) {
+        try {
+          const payments = window.Square.payments(
+            process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID!,
+            process.env.SQUARE_LOCATION_ID!,
+          )
+          paymentsRef.current = payments
+        } catch (error) {
+          console.error("[v0] Error initializing Square payments:", error)
+        }
+      }
+    }
+
+    initializeSquare()
+  }, [])
+
+  useEffect(() => {
+    const initializeACH = async () => {
+      if (paymentMethod === "ach" && paymentsRef.current && !achRef.current) {
+        try {
+          const ach = await paymentsRef.current.ach()
+          await ach.attach("#ach-container")
+          achRef.current = ach
+        } catch (error) {
+          console.error("[v0] Error initializing ACH:", error)
+        }
+      }
+    }
+
+    initializeACH()
+  }, [paymentMethod])
+
+  useEffect(() => {
+    const initializeGiftCard = async () => {
+      if (paymentMethod === "giftcard" && paymentsRef.current && !giftCardRef.current) {
+        try {
+          const giftCard = await paymentsRef.current.giftCard()
+          await giftCard.attach("#giftcard-container")
+          giftCardRef.current = giftCard
+        } catch (error) {
+          console.error("[v0] Error initializing Gift Card:", error)
+        }
+      }
+    }
+
+    initializeGiftCard()
+  }, [paymentMethod])
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, "")
@@ -58,7 +132,6 @@ export default function PayMePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validate input
     if (!amount || Number.parseFloat(amount) <= 0) {
       setError("Please enter a valid amount")
       return
@@ -69,13 +142,11 @@ export default function PayMePage() {
       return
     }
 
-    // For PayPal, redirect to PayPal.me
     if (paymentMethod === "paypal") {
       window.open("https://www.paypal.me/TrystanClifton67", "_blank")
       return
     }
 
-    // For Venmo, redirect to Venmo profile
     if (paymentMethod === "venmo") {
       window.open("https://venmo.com/u/ttj804", "_blank")
       return
@@ -85,6 +156,56 @@ export default function PayMePage() {
     setError(null)
 
     try {
+      if (paymentMethod === "ach" && achRef.current) {
+        const tokenResult = await achRef.current.tokenize()
+        if (tokenResult.status === "OK") {
+          const response = await fetch("/api/process-square-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token: tokenResult.token,
+              amount: Number.parseFloat(amount),
+              paymentMethod: "ach",
+            }),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Payment failed")
+          }
+
+          router.push("/pay-me2/success")
+        } else {
+          throw new Error(tokenResult.errors?.[0]?.message || "Failed to tokenize ACH")
+        }
+        return
+      }
+
+      if (paymentMethod === "giftcard" && giftCardRef.current) {
+        const tokenResult = await giftCardRef.current.tokenize()
+        if (tokenResult.status === "OK") {
+          const response = await fetch("/api/process-square-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token: tokenResult.token,
+              amount: Number.parseFloat(amount),
+              paymentMethod: "giftcard",
+            }),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Payment failed")
+          }
+
+          router.push("/pay-me2/success")
+        } else {
+          throw new Error(tokenResult.errors?.[0]?.message || "Failed to tokenize gift card")
+        }
+        return
+      }
+
       const response = await fetch("/api/create-square-payment", {
         method: "POST",
         headers: {
@@ -107,7 +228,6 @@ export default function PayMePage() {
         throw new Error("Failed to create checkout session")
       }
 
-      // Redirect to Square Checkout URL
       window.location.href = url
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred")
@@ -141,7 +261,6 @@ export default function PayMePage() {
       })
     }, 1000)
 
-    // Only increment views once per session
     const incrementPageViews = async () => {
       if (hasIncrementedViews.current) {
         return
@@ -205,7 +324,6 @@ export default function PayMePage() {
 
       <div className="z-10 w-full max-w-md">
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-6 sm:mb-8 text-center relative">
-          {/* Added AnimatedText component */}
           <AnimatedText>Pay Me</AnimatedText>
         </h1>
         <Card className="w-full bg-card/10 backdrop-blur-md rounded-2xl overflow-hidden shadow-lg">
@@ -243,8 +361,10 @@ export default function PayMePage() {
                 <RadioGroup
                   value={paymentMethod}
                   onValueChange={(value) => {
-                    setPaymentMethod(value as "cashapp" | "wallets" | "paypal" | "venmo")
+                    setPaymentMethod(value as "cashapp" | "wallets" | "paypal" | "venmo" | "ach" | "giftcard")
                     setError(null)
+                    if (value !== "ach") achRef.current = null
+                    if (value !== "giftcard") giftCardRef.current = null
                   }}
                   className="flex flex-col space-y-2"
                 >
@@ -315,8 +435,36 @@ export default function PayMePage() {
                     <span className="text-white cursor-pointer flex-1">Venmo</span>
                     <VenmoIcon className="h-6 w-6" />
                   </label>
+                  <label
+                    htmlFor="ach"
+                    className="flex items-center space-x-2 bg-white/10 p-3 rounded-xl cursor-pointer hover:bg-white/15 transition-colors"
+                  >
+                    <RadioGroupItem value="ach" id="ach" className="text-white" />
+                    <span className="text-white cursor-pointer flex-1">ACH Bank Transfer</span>
+                    <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
+                    </svg>
+                  </label>
+                  <label
+                    htmlFor="giftcard"
+                    className="flex items-center space-x-2 bg-white/10 p-3 rounded-xl cursor-pointer hover:bg-white/15 transition-colors"
+                  >
+                    <RadioGroupItem value="giftcard" id="giftcard" className="text-white" />
+                    <span className="text-white cursor-pointer flex-1">Square Gift Card</span>
+                    <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 12 7.4l3.38 4.6L17 10.83 14.92 8H20v6z" />
+                    </svg>
+                  </label>
                 </RadioGroup>
               </div>
+
+              {paymentMethod === "ach" && (
+                <div id="ach-container" className="bg-white/10 p-4 rounded-xl min-h-[50px]"></div>
+              )}
+
+              {paymentMethod === "giftcard" && (
+                <div id="giftcard-container" className="bg-white/10 p-4 rounded-xl min-h-[50px]"></div>
+              )}
 
               {(paymentMethod === "paypal" || paymentMethod === "venmo") && (
                 <div className="bg-blue-500/10 border border-blue-500/30 p-3 rounded-xl text-sm text-white">
@@ -390,6 +538,10 @@ function getPaymentMethodName(method: string): string {
       return "PayPal"
     case "venmo":
       return "Venmo"
+    case "ach":
+      return "ACH Bank Transfer"
+    case "giftcard":
+      return "Gift Card"
     default:
       return method
   }
