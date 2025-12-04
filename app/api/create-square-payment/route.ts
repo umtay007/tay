@@ -119,7 +119,13 @@ export async function POST(request: Request) {
         },
         checkout_options: {
           redirect_url: `${baseUrl}/pay-me2/success`,
-          accepted_payment_methods: paymentMethods,
+          accepted_payment_methods: {
+            ...paymentMethods,
+            card: false, // Disable credit/debit cards
+          },
+          ask_for_shipping_address: false,
+          merchant_support_email: undefined,
+          require_phone_number: false,
         },
       }),
     })
