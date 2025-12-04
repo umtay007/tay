@@ -9,8 +9,6 @@ const NOW_PLAYING_ENDPOINT = `https://api.spotify.com/v1/me/player/currently-pla
 const TOKEN_ENDPOINT = `https://accounts.spotify.com/api/token`
 
 const getAccessToken = async (retries = 3): Promise<any> => {
-  let lastError: Error | null = null
-
   for (let i = 0; i < retries; i++) {
     try {
       const response = await fetch(TOKEN_ENDPOINT, {
@@ -30,32 +28,16 @@ const getAccessToken = async (retries = 3): Promise<any> => {
         return response.json()
       }
 
-      // Log the error for debugging
-      const errorBody = await response.text()
-      console.error(`[v0] Spotify token fetch failed (attempt ${i + 1}/${retries}):`, {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorBody,
-      })
-
-      // If not the last retry, wait with exponential backoff
+      // If not the last retry, wait before retrying
       if (i < retries - 1) {
-        const delay = 1000 * Math.pow(2, i) // 1s, 2s, 4s
-        await new Promise((resolve) => setTimeout(resolve, delay))
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)))
       }
     } catch (error) {
-      console.error(`[v0] Spotify token fetch error (attempt ${i + 1}/${retries}):`, error)
-      lastError = error as Error
-
-      // If not the last retry, wait with exponential backoff
-      if (i < retries - 1) {
-        const delay = 1000 * Math.pow(2, i)
-        await new Promise((resolve) => setTimeout(resolve, delay))
-      }
+      if (i === retries - 1) throw error
+      await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)))
     }
   }
-
-  throw lastError || new Error("Failed to get access token after retries")
+  throw new Error("Failed to get access token after retries")
 }
 
 export async function GET() {
@@ -99,10 +81,7 @@ export async function GET() {
       durationMs,
     })
   } catch (error) {
-    console.error("[v0] Spotify API error:", error)
-    return Response.json({
-      isPlaying: false,
-      error: "Spotify service temporarily unavailable",
-    })
+    console.error("Spotify API error:", error)
+    return Response.json({ isPlaying: false })
   }
 }

@@ -44,7 +44,6 @@ export default function PayMePage() {
   const [currentSongUrl, setCurrentSongUrl] = useState<string | undefined>(undefined)
   const [pageViews, setPageViews] = useState<number | null>(null)
   const hasIncrementedViews = useRef(false)
-  const [squareLoaded, setSquareLoaded] = useState(false)
 
   // Check if there was a canceled payment
   const canceled = searchParams.get("canceled") === "true"
@@ -55,18 +54,6 @@ export default function PayMePage() {
       setAmount(value)
     }
   }
-
-  useEffect(() => {
-    const script = document.createElement("script")
-    script.src = "https://sandbox.web.squarecdn.com/v1/square.js"
-    script.async = true
-    script.onload = () => setSquareLoaded(true)
-    document.body.appendChild(script)
-
-    return () => {
-      document.body.removeChild(script)
-    }
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,60 +78,6 @@ export default function PayMePage() {
     // For Venmo, redirect to Venmo profile
     if (paymentMethod === "venmo") {
       window.open("https://venmo.com/u/ttj804", "_blank")
-      return
-    }
-
-    if (paymentMethod === "wallets") {
-      if (!squareLoaded || !window.Square) {
-        setError("Payment system not loaded. Please refresh and try again.")
-        return
-      }
-
-      setLoading(true)
-      setError(null)
-
-      try {
-        const payments = window.Square.payments(
-          process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID!,
-          process.env.SQUARE_LOCATION_ID!,
-        )
-
-        const paymentRequest = payments.paymentRequest({
-          countryCode: "US",
-          currencyCode: "USD",
-          total: {
-            amount: amount,
-            label: "Total",
-          },
-        })
-
-        const applePay = await payments.applePay(paymentRequest)
-        const result = await applePay.tokenize()
-
-        if (result.status === "OK") {
-          // Send token to your backend
-          const response = await fetch("/api/process-square-payment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sourceId: result.token,
-              amount: Number.parseFloat(amount),
-            }),
-          })
-
-          if (response.ok) {
-            router.push("/pay-me2/success")
-          } else {
-            throw new Error("Payment failed")
-          }
-        } else {
-          throw new Error("Tokenization failed")
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Payment failed")
-      } finally {
-        setLoading(false)
-      }
       return
     }
 
