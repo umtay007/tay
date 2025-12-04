@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server"
 import crypto from "crypto"
-import { Client } from "square"
+import { Client, Environment } from "square"
 
 export async function POST(request: Request) {
   try {
@@ -15,38 +15,37 @@ export async function POST(request: Request) {
     // Initialize Square client
     const client = new Client({
       accessToken: process.env.SQUARE_ACCESS_TOKEN!,
-      environment:
-        process.env.SQUARE_ENVIRONMENT === "production"
-          ? "production"
-          : "sandbox",
+      environment: process.env.SQUARE_ENVIRONMENT === "production" ? Environment.Production : Environment.Sandbox,
     })
 
-    // Convert amount to cents
     const amountInCents = Math.round(amount * 100)
 
     // Map your paymentMethod to Square's AcceptedPaymentMethods
     const acceptedPaymentMethods = {
-      applePay: paymentMethod === "wallets",
-      googlePay: paymentMethod === "wallets",
-      cashAppPay: paymentMethod === "cashapp",
+      applePay: paymentMethod === "applePay",
+      googlePay: paymentMethod === "googlePay",
+      cashAppPay: paymentMethod === "cashAppPay",
     }
 
     // Use the checkoutApi from the client
     const response = await client.checkoutApi.createPaymentLink({
       idempotencyKey: crypto.randomUUID(),
+      checkoutOptions: {
+        askForShippingAddress: false,
+        enableCoupon: false,
+        enableLoyalty: true,
+        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/checkout/success`,
+        acceptedPaymentMethods,
+      },
+      description: "Payment",
+      paymentNote: "Thank you for your payment!",
       quickPay: {
+        locationId: process.env.SQUARE_LOCATION_ID!,
         name: "Payment",
         priceMoney: {
           amount: BigInt(amountInCents),
           currency: "USD",
         },
-        locationId: process.env.SQUARE_LOCATION_ID!,
-      },
-      checkoutOptions: {
-        acceptedPaymentMethods,
-        redirectUrl: `${
-          process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-        }/pay-me2/success`,
       },
     })
 
@@ -61,10 +60,7 @@ export async function POST(request: Request) {
     console.error("Square payment error:", error)
     const errorResponse = NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to create payment",
+        error: error instanceof Error ? error.message : "Failed to create payment",
       },
       { status: 500 },
     )
