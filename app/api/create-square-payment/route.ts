@@ -1,22 +1,25 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
-import { Client as SquareClient, Environment as SquareEnvironment } from "square"
+import { Client as SquareClient } from "square"
 
 export async function POST(request: Request) {
   try {
+    console.log("[v0] Creating Square payment link...")
+
     const { amount } = await request.json()
+    console.log("[v0] Amount received:", amount)
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
     }
 
     const client = new SquareClient({
-      environment:
-        process.env.SQUARE_ENVIRONMENT === "production" ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
+      environment: process.env.SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox",
       accessToken: process.env.SQUARE_ACCESS_TOKEN!,
     })
 
     const amountInCents = Math.round(amount * 100)
+    console.log("[v0] Amount in cents:", amountInCents)
 
     const response = await client.checkoutApi.createPaymentLink({
       idempotencyKey: crypto.randomUUID(),
@@ -43,6 +46,8 @@ export async function POST(request: Request) {
       },
     })
 
+    console.log("[v0] Payment link created successfully")
+
     if (!response.result.paymentLink?.url) {
       throw new Error("Failed to create payment link")
     }
@@ -51,7 +56,7 @@ export async function POST(request: Request) {
     successResponse.headers.set("Access-Control-Allow-Origin", "*")
     return successResponse
   } catch (error) {
-    console.error("Square payment error:", error)
+    console.error("[v0] Square payment error:", error)
     const errorResponse = NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Failed to create payment",
