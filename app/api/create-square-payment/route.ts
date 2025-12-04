@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server"
 import crypto from "crypto"
-import { Client } from "square"
+import { Client as SquareClient, Environment as SquareEnvironment } from "square"
 
 export async function POST(request: Request) {
   try {
@@ -13,9 +13,10 @@ export async function POST(request: Request) {
     }
 
     // Initialize Square client
-    const client = new Client({
+    const client = new SquareClient({
       accessToken: process.env.SQUARE_ACCESS_TOKEN!,
-      environment: process.env.SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox",
+      environment:
+        process.env.SQUARE_ENVIRONMENT === "production" ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
     })
 
     const amountInCents = Math.round(amount * 100)
