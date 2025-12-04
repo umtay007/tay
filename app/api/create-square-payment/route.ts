@@ -5,18 +5,14 @@ import { randomUUID } from "crypto"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-// UNIQUE MARKER TO CONFIRM THIS VERSION IS DEPLOYED
-const VERSION = "HTTP-API-V2-FINAL"
-
 export async function POST(request: Request) {
-  console.log("=== VERSION:", VERSION, "===")
-  console.log("=== Square Payment Request Started ===")
+  console.log("=== Square Payment Request (HTTP API) ===")
   
   try {
     const body = await request.json()
     const { amount } = body
     
-    console.log("Amount requested:", amount)
+    console.log("Amount:", amount)
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
@@ -29,41 +25,22 @@ export async function POST(request: Request) {
 
     if (!accessToken) {
       console.error("Missing SQUARE_ACCESS_TOKEN")
-      return NextResponse.json({ error: "Missing Square Access Token" }, { status: 500 })
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
     }
 
     if (!locationId) {
       console.error("Missing SQUARE_LOCATION_ID")
-      return NextResponse.json({ error: "Missing Square Location ID" }, { status: 500 })
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
     }
 
-    console.log("Environment:", environment)
-    console.log("Location ID:", locationId)
+    console.log("Env:", environment, "Location:", locationId)
 
-    // Use Square REST API directly instead of SDK
+    // Call Square REST API directly
     const squareApiUrl = environment === "production" 
       ? "https://connect.squareup.com"
       : "https://connect.squareupsandbox.com"
 
     const amountInCents = Math.round(amount * 100)
-
-    const requestBody = {
-      idempotency_key: randomUUID(),
-      quick_pay: {
-        name: "Payment",
-        location_id: locationId,
-        price_money: {
-          amount: amountInCents,
-          currency: "USD",
-        },
-      },
-      checkout_options: {
-        redirect_url: `${baseUrl}/pay-me2/success`,
-      },
-    }
-
-    console.log("Calling Square API directly...")
-    console.log("API URL:", squareApiUrl)
 
     const response = await fetch(`${squareApiUrl}/v2/online-checkout/payment-links`, {
       method: "POST",
@@ -72,45 +49,52 @@ export async function POST(request: Request) {
         "Authorization": `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        idempotency_key: randomUUID(),
+        quick_pay: {
+          name: "Payment",
+          location_id: locationId,
+          price_money: {
+            amount: amountInCents,
+            currency: "USD",
+          },
+        },
+        checkout_options: {
+          redirect_url: `${baseUrl}/pay-me2/success`,
+        },
+      }),
     })
 
-    const responseData = await response.json()
+    const data = await response.json()
     
-    console.log("Square API response status:", response.status)
-    console.log("Square API response:", JSON.stringify(responseData, null, 2))
+    console.log("Square response status:", response.status)
 
     if (!response.ok) {
-      console.error("Square API error:", responseData)
+      console.error("Square error:", data)
       return NextResponse.json(
         { 
-          error: responseData.errors?.[0]?.detail || "Failed to create payment link",
-          details: responseData.errors,
+          error: data.errors?.[0]?.detail || "Payment creation failed",
+          details: data.errors,
         },
         { status: response.status }
       )
     }
 
-    if (!responseData.payment_link?.url) {
-      console.error("No payment link URL in response")
-      return NextResponse.json({ error: "Failed to create payment link" }, { status: 500 })
+    if (!data.payment_link?.url) {
+      console.error("No payment URL in response")
+      return NextResponse.json({ error: "No payment URL received" }, { status: 500 })
     }
 
-    console.log("✅ SUCCESS! Payment link created:", responseData.payment_link.url)
+    console.log("✅ Payment link created:", data.payment_link.url)
 
     return NextResponse.json({
-      url: responseData.payment_link.url,
+      url: data.payment_link.url,
     })
 
   } catch (error: any) {
-    console.error("=== Square Payment Error ===")
     console.error("Error:", error.message)
-    console.error("Stack:", error.stack)
-
     return NextResponse.json(
-      {
-        error: error.message || "Payment creation failed",
-      },
+      { error: error.message || "Payment creation failed" },
       { status: 500 }
     )
   }

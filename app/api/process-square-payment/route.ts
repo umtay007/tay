@@ -1,52 +1,33 @@
+// app/api/process-square-payment/route.ts
 import { NextResponse } from "next/server"
-import { Client } from "square"
-import crypto from "crypto"
+
+export const runtime = "nodejs"
 
 export async function POST(request: Request) {
+  console.log("=== Process Square Payment Request ===")
+  
   try {
-    const { token, amount, paymentMethod } = await request.json()
+    const body = await request.json()
+    
+    console.log("Square payment processing request:", body)
 
-    if (!token || !amount || amount <= 0) {
-      return NextResponse.json({ error: "Invalid payment data" }, { status: 400 })
-    }
-
-    const client = new Client({
-      accessToken: process.env.SQUARE_ACCESS_TOKEN!,
-      environment: process.env.SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox",
-    })
-
-    const amountInCents = Math.round(amount * 100)
-
-    const paymentResponse = await client.paymentsApi.createPayment({
-      sourceId: token,
-      idempotencyKey: crypto.randomUUID(),
-      amountMoney: {
-        amount: BigInt(amountInCents),
-        currency: "USD",
-      },
-      locationId: process.env.SQUARE_LOCATION_ID!,
-    })
-
-    if (!paymentResponse.result.payment) {
-      throw new Error("Payment failed")
-    }
+    // This is for Square webhooks or payment confirmations
+    // Add your Square payment processing logic here
 
     return NextResponse.json({
-      success: true,
-      paymentId: paymentResponse.result.payment.id,
-    })
-  } catch (error) {
-    console.error("Square payment error:", error)
+      error: "This endpoint is not yet configured",
+    }, { status: 501 })
+
+  } catch (error: any) {
+    console.error("Error:", error.message)
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to process payment",
-      },
-      { status: 500 },
+      { error: "Square payment processing failed" },
+      { status: 500 }
     )
   }
 }
 
-export async function OPTIONS(request: Request) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

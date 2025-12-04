@@ -153,7 +153,7 @@ importers:
         specifier: ^1.7.4
         version: 1.7.4(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       square:
-        specifier: latest
+        specifier: 43.2.1
         version: 43.2.1
       stripe:
         specifier: 20.0.0

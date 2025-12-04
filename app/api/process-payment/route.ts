@@ -1,35 +1,39 @@
+// app/api/process-payment/route.ts
 import { NextResponse } from "next/server"
-import { Client } from "square"
-import crypto from "crypto"
+
+export const runtime = "nodejs"
 
 export async function POST(request: Request) {
+  console.log("=== Process Payment Request ===")
+  
   try {
-    const { sourceId, amount } = await request.json()
+    const body = await request.json()
+    
+    console.log("Payment processing request:", body)
 
-    if (!sourceId || !amount || amount <= 0) {
-      return NextResponse.json({ error: "Invalid payment details" }, { status: 400 })
-    }
+    // This is for processing completed payments
+    // Add webhook handling or payment confirmation logic here
 
-    const client = new Client({
-      accessToken: process.env.SQUARE_ACCESS_TOKEN!,
-      environment: process.env.SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox",
-    })
+    return NextResponse.json({
+      error: "This endpoint is not yet configured",
+    }, { status: 501 })
 
-    const amountInCents = Math.round(amount * 100)
-
-    const response = await client.paymentsApi.createPayment({
-      sourceId,
-      idempotencyKey: crypto.randomUUID(),
-      amountMoney: {
-        amount: BigInt(amountInCents),
-        currency: "USD",
-      },
-      locationId: process.env.SQUARE_LOCATION_ID!,
-    })
-
-    return NextResponse.json({ success: true, payment: response.result.payment })
-  } catch (error) {
-    console.error("Payment processing error:", error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Payment failed" }, { status: 500 })
+  } catch (error: any) {
+    console.error("Error:", error.message)
+    return NextResponse.json(
+      { error: "Payment processing failed" },
+      { status: 500 }
+    )
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  })
 }
