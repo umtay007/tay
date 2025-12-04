@@ -1,34 +1,23 @@
-// app/api/create-square-payment/route.ts
-
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { Client as SquareClient, Environment as SquareEnvironment } from "square"
 
 export async function POST(request: Request) {
   try {
-    const { amount, paymentMethod } = await request.json()
+    const { amount } = await request.json()
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
     }
 
-    // Initialize Square client
     const client = new SquareClient({
-      accessToken: process.env.SQUARE_ACCESS_TOKEN!,
       environment:
         process.env.SQUARE_ENVIRONMENT === "production" ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
+      accessToken: process.env.SQUARE_ACCESS_TOKEN!,
     })
 
     const amountInCents = Math.round(amount * 100)
 
-    // Map your paymentMethod to Square's AcceptedPaymentMethods
-    const acceptedPaymentMethods = {
-      applePay: paymentMethod === "applePay",
-      googlePay: paymentMethod === "googlePay",
-      cashAppPay: paymentMethod === "cashAppPay",
-    }
-
-    // Use the checkoutApi from the client
     const response = await client.checkoutApi.createPaymentLink({
       idempotencyKey: crypto.randomUUID(),
       checkoutOptions: {
@@ -36,10 +25,14 @@ export async function POST(request: Request) {
         enableCoupon: false,
         enableLoyalty: true,
         redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/checkout/success`,
-        acceptedPaymentMethods,
+        acceptedPaymentMethods: {
+          applePay: true,
+          cashAppPay: true,
+          googlePay: true,
+        },
       },
       description: "Payment",
-      paymentNote: "Thank you for your payment!",
+      paymentNote: "Thank you!",
       quickPay: {
         locationId: process.env.SQUARE_LOCATION_ID!,
         name: "Payment",
