@@ -87,7 +87,7 @@ export default function PayMePage() {
     try {
       // Configure which payment methods to show based on button selected
       let acceptedPaymentMethods
-      
+
       if (paymentMethod === "cashapp") {
         // Cash App button: Only show Cash App Pay
         acceptedPaymentMethods = {
@@ -169,7 +169,7 @@ export default function PayMePage() {
       hasIncrementedViews.current = true
 
       try {
-        const response = await fetch("/api/views?page=pay_me_views")
+        const response = await fetch("/api/views?page=pay_me2_views")
         const data = await response.json()
         setPageViews(data.views)
       } catch (error) {
@@ -193,10 +193,7 @@ export default function PayMePage() {
   }
 
   return (
-    <main
-      className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 md:p-24 relative overflow-hidden"
-      style={{ background: "linear-gradient(135deg, rgb(0, 0, 0), rgb(0, 0, 51), rgb(0, 0, 153))" }}
-    >
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 md:p-24 relative overflow-hidden bg-gradient-to-br from-black via-red-950 to-red-900">
       <GlitterBackground />
       <RainBackground />
 
