@@ -24,8 +24,8 @@ async function notifyDiscordStarted(amount: number, paymentUrl: string) {
         // NO @everyone ping for started payments
         embeds: [
           {
-            title: "💳 Payment Started",
-            description: `Someone is checking out for **$${amount.toFixed(2)}**`,
+            title: "💳 Somebody MIGHT wanna pay you",
+            description: `They LOWKEY wanna pay you **$${amount.toFixed(2)}**`,
             color: 0x0099ff, // Blue color
             fields: [
               {
@@ -46,7 +46,7 @@ async function notifyDiscordStarted(amount: number, paymentUrl: string) {
             ],
             timestamp: new Date().toISOString(),
             footer: {
-              text: "Square Payment System",
+              text: "Tays payments NIGGA",
             },
           },
         ],
