@@ -28,6 +28,8 @@ export async function POST(request: Request) {
     } else if (paymentMethod === "wallets") {
       // Digital wallets are handled automatically by Stripe when card is enabled
       paymentMethodTypes.push("card")
+    } else if (paymentMethod === "ukbt") {
+      paymentMethodTypes.push("bacs_debit")
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -35,12 +37,18 @@ export async function POST(request: Request) {
       line_items: [
         {
           price_data: {
-            currency: "usd",
+            currency: paymentMethod === "ukbt" ? "gbp" : "usd",
             product_data: {
               name: "Payment",
-              description: `Payment via ${paymentMethod === "cashapp" ? "Cash App" : "Digital Wallet"}`,
+              description: `Payment via ${
+                paymentMethod === "cashapp"
+                  ? "Cash App"
+                  : paymentMethod === "ukbt"
+                    ? "UK Bank Transfer"
+                    : "Digital Wallet"
+              }`,
             },
-            unit_amount: Math.round(amount * 100), // Convert to cents
+            unit_amount: Math.round(amount * 100), // Convert to cents/pence
           },
           quantity: 1,
         },

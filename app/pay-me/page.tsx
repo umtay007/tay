@@ -36,7 +36,7 @@ type SpotifyData = {
 
 export default function PayMePage() {
   const [amount, setAmount] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState<"cashapp" | "wallets" | "paypal" | "venmo">("cashapp")
+  const [paymentMethod, setPaymentMethod] = useState<"cashapp" | "wallets" | "paypal" | "venmo" | "ukbt">("cashapp")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -89,7 +89,7 @@ export default function PayMePage() {
     setError(null)
 
     try {
-      // For Cash App and Wallets, use Stripe
+      // For Cash App, Wallets, and UK Bank Transfer, use Stripe
       const response = await fetch("/api/create-payment-session", {
         method: "POST",
         headers: {
@@ -248,7 +248,7 @@ export default function PayMePage() {
                 <RadioGroup
                   value={paymentMethod}
                   onValueChange={(value) => {
-                    setPaymentMethod(value as "cashapp" | "wallets" | "paypal" | "venmo")
+                    setPaymentMethod(value as "cashapp" | "wallets" | "paypal" | "venmo" | "ukbt")
                     setError(null)
                   }}
                   className="flex flex-col space-y-2"
@@ -302,6 +302,16 @@ export default function PayMePage() {
                           fill="#EA4335"
                         />
                       </svg>
+                    </div>
+                  </label>
+                  <label
+                    htmlFor="ukbt"
+                    className="flex items-center space-x-2 bg-white/10 p-3 rounded-xl cursor-pointer hover:bg-white/15 transition-colors"
+                  >
+                    <RadioGroupItem value="ukbt" id="ukbt" className="text-white" />
+                    <span className="text-white cursor-pointer flex-1">UKBT</span>
+                    <div className="h-6 w-6 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs">
+                      £
                     </div>
                   </label>
                   <label
@@ -391,6 +401,8 @@ function getPaymentMethodName(method: string): string {
       return "Cash App"
     case "wallets":
       return "Google Pay/Apple Pay"
+    case "ukbt":
+      return "UKBT"
     case "paypal":
       return "PayPal"
     case "venmo":
