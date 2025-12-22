@@ -36,7 +36,9 @@ type SpotifyData = {
 
 export default function PayMePage() {
   const [amount, setAmount] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState<"cashapp" | "wallets" | "paypal" | "venmo" | "ukbt">("cashapp")
+  const [paymentMethod, setPaymentMethod] = useState<"cashapp" | "wallets" | "paypal" | "venmo" | "revolut_pay">(
+    "cashapp",
+  )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -89,7 +91,7 @@ export default function PayMePage() {
     setError(null)
 
     try {
-      // For Cash App, Wallets, and UK Bank Transfer, use Stripe
+      // For Cash App, Wallets, Revolut Pay, use Stripe
       const response = await fetch("/api/create-payment-session", {
         method: "POST",
         headers: {
@@ -248,7 +250,7 @@ export default function PayMePage() {
                 <RadioGroup
                   value={paymentMethod}
                   onValueChange={(value) => {
-                    setPaymentMethod(value as "cashapp" | "wallets" | "paypal" | "venmo" | "ukbt")
+                    setPaymentMethod(value as "cashapp" | "wallets" | "paypal" | "venmo" | "revolut_pay")
                     setError(null)
                   }}
                   className="flex flex-col space-y-2"
@@ -305,13 +307,13 @@ export default function PayMePage() {
                     </div>
                   </label>
                   <label
-                    htmlFor="ukbt"
+                    htmlFor="revolut_pay"
                     className="flex items-center space-x-2 bg-white/10 p-3 rounded-xl cursor-pointer hover:bg-white/15 transition-colors"
                   >
-                    <RadioGroupItem value="ukbt" id="ukbt" className="text-white" />
-                    <span className="text-white cursor-pointer flex-1">UKBT</span>
-                    <div className="h-6 w-6 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs">
-                      £
+                    <RadioGroupItem value="revolut_pay" id="revolut_pay" className="text-white" />
+                    <span className="text-white cursor-pointer flex-1">Revolut Pay</span>
+                    <div className="h-6 w-6 bg-gradient-to-br from-purple-600 to-blue-500 rounded flex items-center justify-center text-white font-bold text-xs">
+                      R
                     </div>
                   </label>
                   <label
@@ -401,8 +403,8 @@ function getPaymentMethodName(method: string): string {
       return "Cash App"
     case "wallets":
       return "Google Pay/Apple Pay"
-    case "ukbt":
-      return "UKBT"
+    case "revolut_pay":
+      return "Revolut Pay"
     case "paypal":
       return "PayPal"
     case "venmo":

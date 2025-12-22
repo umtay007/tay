@@ -28,11 +28,19 @@ export async function POST(request: Request) {
     } else if (paymentMethod === "wallets") {
       // Digital wallets are handled automatically by Stripe when card is enabled
       paymentMethodTypes.push("card")
+    } else if (paymentMethod === "revolut_pay") {
+      paymentMethodTypes.push("revolut_pay")
     } else if (paymentMethod === "ukbt") {
-      paymentMethodTypes.push("bacs_debit")
+      return NextResponse.json(
+        {
+          error:
+            "UK Bank Transfer is not yet enabled. Please enable BACS Direct Debit in your Stripe Dashboard at: https://dashboard.stripe.com/settings/payment_methods",
+        },
+        { status: 400 },
+      )
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: paymentMethodTypes,
       line_items: [
         {
@@ -44,8 +52,10 @@ export async function POST(request: Request) {
                 paymentMethod === "cashapp"
                   ? "Cash App"
                   : paymentMethod === "ukbt"
-                    ? "UK Bank Transfer"
-                    : "Digital Wallet"
+                    ? "UK Bank Transfer (FPS)"
+                    : paymentMethod === "revolut_pay"
+                      ? "Revolut Pay"
+                      : "Digital Wallet"
               }`,
             },
             unit_amount: Math.round(amount * 100), // Convert to cents/pence
@@ -54,9 +64,17 @@ export async function POST(request: Request) {
         },
       ],
       mode: "payment",
-      success_url: `${baseUrl}/pay-me/success?amount=${amount}`,
+      success_url: `${baseUrl}/pay-me/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pay-me?canceled=true`,
-    })
+    }
+
+    if (paymentMethod === "ukbt") {
+      sessionParams.payment_intent_data = {
+        setup_future_usage: "off_session",
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams)
 
     console.log("[v0] Checkout session created:", session.id)
 
