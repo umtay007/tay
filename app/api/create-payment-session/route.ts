@@ -23,6 +23,8 @@ export async function POST(request: Request) {
     // Configure payment method types based on selection
     const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] = []
 
+    let currency = "usd" // Default currency
+
     if (paymentMethod === "cashapp") {
       paymentMethodTypes.push("cashapp")
     } else if (paymentMethod === "wallets") {
@@ -30,6 +32,7 @@ export async function POST(request: Request) {
       paymentMethodTypes.push("card")
     } else if (paymentMethod === "revolut_pay") {
       paymentMethodTypes.push("revolut_pay")
+      currency = "gbp" // Revolut Pay supports EUR, GBP, RON, HUF, PLN, DKK - using GBP
     } else if (paymentMethod === "ukbt") {
       return NextResponse.json(
         {
@@ -45,7 +48,7 @@ export async function POST(request: Request) {
       line_items: [
         {
           price_data: {
-            currency: paymentMethod === "ukbt" ? "gbp" : "usd",
+            currency: currency, // Using dynamic currency based on payment method
             product_data: {
               name: "Payment",
               description: `Payment via ${
