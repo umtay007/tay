@@ -36,9 +36,7 @@ type SpotifyData = {
 
 export default function PayMePage() {
   const [amount, setAmount] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState<"cashapp" | "wallets" | "paypal" | "venmo" | "revolut_pay">(
-    "cashapp",
-  )
+  const [paymentMethod, setPaymentMethod] = useState<"cashapp" | "wallets" | "paypal" | "venmo" | "ach">("cashapp")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -63,6 +61,11 @@ export default function PayMePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (paymentMethod === "ach") {
+      router.push("/Bank")
+      return
+    }
 
     // Validate input
     if (!amount || Number.parseFloat(amount) <= 0) {
@@ -91,7 +94,7 @@ export default function PayMePage() {
     setError(null)
 
     try {
-      // For Cash App, Wallets, Revolut Pay, use Stripe
+      // For Cash App, Wallets, use Stripe
       const response = await fetch("/api/create-payment-session", {
         method: "POST",
         headers: {
@@ -250,7 +253,7 @@ export default function PayMePage() {
                 <RadioGroup
                   value={paymentMethod}
                   onValueChange={(value) => {
-                    setPaymentMethod(value as "cashapp" | "wallets" | "paypal" | "venmo" | "revolut_pay")
+                    setPaymentMethod(value as "cashapp" | "wallets" | "paypal" | "venmo" | "ach")
                     setError(null)
                   }}
                   className="flex flex-col space-y-2"
@@ -307,13 +310,13 @@ export default function PayMePage() {
                     </div>
                   </label>
                   <label
-                    htmlFor="revolut_pay"
+                    htmlFor="ach"
                     className="flex items-center space-x-2 bg-white/10 p-3 rounded-xl cursor-pointer hover:bg-white/15 transition-colors"
                   >
-                    <RadioGroupItem value="revolut_pay" id="revolut_pay" className="text-white" />
-                    <span className="text-white cursor-pointer flex-1">Revolut Pay</span>
-                    <div className="h-6 w-6 bg-gradient-to-br from-purple-600 to-blue-500 rounded flex items-center justify-center text-white font-bold text-xs">
-                      R
+                    <RadioGroupItem value="ach" id="ach" className="text-white" />
+                    <span className="text-white cursor-pointer flex-1">Bank Transfer (USD, GBP, EUR)</span>
+                    <div className="h-6 w-6 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs">
+                      🏦
                     </div>
                   </label>
                   <label
@@ -335,10 +338,15 @@ export default function PayMePage() {
                 </RadioGroup>
               </div>
 
-              {(paymentMethod === "paypal" || paymentMethod === "venmo") && (
+              {(paymentMethod === "paypal" || paymentMethod === "venmo" || paymentMethod === "ach") && (
                 <div className="bg-blue-500/10 border border-blue-500/30 p-3 rounded-xl text-sm text-white">
                   <p>
-                    <strong>Note:</strong> You will be redirected to {paymentMethod === "paypal" ? "PayPal" : "Venmo"}{" "}
+                    <strong>Note:</strong> You will be redirected to{" "}
+                    {paymentMethod === "paypal"
+                      ? "PayPal"
+                      : paymentMethod === "venmo"
+                        ? "Venmo"
+                        : "select your bank transfer method"}{" "}
                     to complete your payment.
                   </p>
                 </div>
@@ -384,7 +392,9 @@ export default function PayMePage() {
             <CardFooter className="flex flex-col gap-4">
               <Button
                 type="submit"
-                disabled={loading || !termsAccepted || !amount || Number.parseFloat(amount) <= 0}
+                disabled={
+                  loading || !termsAccepted || (paymentMethod !== "ach" && (!amount || Number.parseFloat(amount) <= 0))
+                }
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded-xl transition-all duration-200 transform hover:scale-105 hover:shadow-lg"
               >
                 {loading ? "Processing..." : `Pay with ${getPaymentMethodName(paymentMethod)}`}
@@ -403,8 +413,8 @@ function getPaymentMethodName(method: string): string {
       return "Cash App"
     case "wallets":
       return "Google Pay/Apple Pay"
-    case "revolut_pay":
-      return "Revolut Pay"
+    case "ach":
+      return "Bank Transfer"
     case "paypal":
       return "PayPal"
     case "venmo":
