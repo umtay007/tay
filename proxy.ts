@@ -3,24 +3,24 @@ import type { NextRequest } from "next/server"
 
 export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
+  const lowerPath = path.toLowerCase()
 
-  // Define case-insensitive route mappings
-  const routeMappings: Record<string, string> = {
-    "/bank": "/Bank",
-    "/usa": "/USA",
-    "/sepa": "/SEPA",
-    "/ukbt": "/UKBT",
-    "/cad": "/CAD",
-    "/interac": "/CAD", // Redirect old interac route to CAD
+  // Only redirect if the path is uppercase and matches our routes
+  if (lowerPath !== path) {
+    const routesToHandle = ["/bank", "/usa", "/sepa", "/ukbt", "/cad"]
+
+    if (routesToHandle.includes(lowerPath)) {
+      const url = new URL(request.url)
+      url.pathname = lowerPath === "/interac" ? "/CAD" : path.toUpperCase().replace("/INTERAC", "/CAD")
+      return NextResponse.redirect(url, 301)
+    }
   }
 
-  // Check if the lowercase path exists in our mappings
-  const lowerPath = path.toLowerCase()
-  if (routeMappings[lowerPath] && path !== routeMappings[lowerPath]) {
-    // Redirect to the correct casing
-    const url = request.nextUrl.clone()
-    url.pathname = routeMappings[lowerPath]
-    return NextResponse.redirect(url)
+  // Handle old /interac route
+  if (lowerPath === "/interac") {
+    const url = new URL(request.url)
+    url.pathname = "/CAD"
+    return NextResponse.redirect(url, 301)
   }
 
   return NextResponse.next()
@@ -28,17 +28,11 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/bank",
-    "/usa",
-    "/sepa",
-    "/ukbt",
-    "/cad",
-    "/interac",
-    "/Bank",
-    "/USA",
-    "/SEPA",
-    "/UKBT",
-    "/CAD",
-    "/Interac",
+    "/(bank|Bank|BANK)",
+    "/(usa|USA|Usa)",
+    "/(sepa|SEPA|Sepa)",
+    "/(ukbt|UKBT|Ukbt)",
+    "/(cad|CAD|Cad)",
+    "/(interac|Interac|INTERAC)",
   ],
 }
