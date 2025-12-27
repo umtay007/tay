@@ -71,7 +71,6 @@ export async function POST(request: Request) {
       mode: "payment",
       success_url: `${baseUrl}/pay-me/success?session_id={CHECKOUT_SESSION_ID}&method=${paymentMethod}${isApplePay ? "&apple_pay=true" : ""}`,
       cancel_url: `${baseUrl}/pay-me?canceled=true`,
-      payment_method_collection: "always",
     }
 
     if (paymentMethod === "ukbt") {
