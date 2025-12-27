@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { amount, paymentMethod } = body
+    const { amount, paymentMethod, isApplePay } = body
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       line_items: [
         {
           price_data: {
-            currency: currency, // Using dynamic currency based on payment method
+            currency: currency,
             product_data: {
               name: "Payment",
               description: `Payment via ${
@@ -58,17 +58,20 @@ export async function POST(request: Request) {
                     ? "UK Bank Transfer (FPS)"
                     : paymentMethod === "revolut_pay"
                       ? "Revolut Pay"
-                      : "Digital Wallet"
+                      : isApplePay
+                        ? "Apple Pay"
+                        : "Digital Wallet"
               }`,
             },
-            unit_amount: Math.round(amount * 100), // Convert to cents/pence
+            unit_amount: Math.round(amount * 100),
           },
           quantity: 1,
         },
       ],
       mode: "payment",
-      success_url: `${baseUrl}/pay-me/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/pay-me/success?session_id={CHECKOUT_SESSION_ID}&method=${paymentMethod}${isApplePay ? "&apple_pay=true" : ""}`,
       cancel_url: `${baseUrl}/pay-me?canceled=true`,
+      payment_method_collection: "always",
     }
 
     if (paymentMethod === "ukbt") {

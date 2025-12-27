@@ -67,10 +67,11 @@ export default function PayMePage() {
       return
     }
 
-    // Validate input
-    if (!amount || Number.parseFloat(amount) <= 0) {
-      setError("Please enter a valid amount")
-      return
+    if (paymentMethod !== "cashapp" && paymentMethod !== "wallets") {
+      if (!amount || Number.parseFloat(amount) <= 0) {
+        setError("Please enter a valid amount")
+        return
+      }
     }
 
     if (!termsAccepted) {
@@ -81,12 +82,19 @@ export default function PayMePage() {
     // For PayPal, redirect to PayPal.me
     if (paymentMethod === "paypal") {
       window.open("https://www.paypal.me/TrystanClifton67", "_blank")
+      router.push("/pay-me/success?method=paypal")
       return
     }
 
     // For Venmo, redirect to Venmo profile
     if (paymentMethod === "venmo") {
       window.open("https://venmo.com/u/ttj804", "_blank")
+      router.push("/pay-me/success?method=venmo")
+      return
+    }
+
+    if ((paymentMethod === "cashapp" || paymentMethod === "wallets") && (!amount || Number.parseFloat(amount) <= 0)) {
+      router.push(`/pay-me/success?method=${paymentMethod}`)
       return
     }
 
@@ -94,6 +102,10 @@ export default function PayMePage() {
     setError(null)
 
     try {
+      // Check if user is using Apple Pay by detecting if the browser supports ApplePaySession
+      const isApplePay =
+        paymentMethod === "wallets" && typeof window !== "undefined" && (window as any).ApplePaySession !== undefined
+
       // For Cash App, Wallets, use Stripe
       const response = await fetch("/api/create-payment-session", {
         method: "POST",
@@ -103,6 +115,7 @@ export default function PayMePage() {
         body: JSON.stringify({
           amount: Number.parseFloat(amount),
           paymentMethod,
+          isApplePay, // Pass Apple Pay detection to backend
         }),
       })
 
@@ -235,7 +248,7 @@ export default function PayMePage() {
 
               <div className="space-y-2">
                 <Label htmlFor="amount" className="text-white">
-                  Amount (USD)
+                  Amount (USD) {(paymentMethod === "cashapp" || paymentMethod === "wallets") && "(Optional)"}
                 </Label>
                 <Input
                   id="amount"
@@ -393,7 +406,12 @@ export default function PayMePage() {
               <Button
                 type="submit"
                 disabled={
-                  loading || !termsAccepted || (paymentMethod !== "ach" && (!amount || Number.parseFloat(amount) <= 0))
+                  loading ||
+                  !termsAccepted ||
+                  (paymentMethod !== "ach" &&
+                    paymentMethod !== "cashapp" &&
+                    paymentMethod !== "wallets" &&
+                    (!amount || Number.parseFloat(amount) <= 0))
                 }
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded-xl transition-all duration-200 transform hover:scale-105 hover:shadow-lg"
               >
