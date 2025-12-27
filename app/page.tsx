@@ -308,7 +308,7 @@ export default function Home() {
         </div>
       </div>
 
-      <main className="h-screen flex items-center justify-center p-8 relative bg-gradient-to-br from-black via-slate-900 to-blue-950 font-sans overflow-hidden">
+      <main className="min-h-[100dvh] flex items-center justify-center p-8 relative bg-gradient-to-br from-black via-slate-900 to-blue-950 font-sans overflow-hidden">
         <div className="flex flex-col items-center">
           <h1 className="text-4xl font-bold mb-10 text-white min-h-[3rem] flex items-center whitespace-pre">
             {renderStyledText()}
