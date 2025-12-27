@@ -308,7 +308,7 @@ export default function Home() {
         </div>
       </div>
 
-      <main className="min-h-screen flex items-center justify-center p-8 relative bg-gradient-to-br from-black via-slate-900 to-blue-950 font-sans">
+      <main className="h-screen flex items-center justify-center p-8 relative bg-gradient-to-br from-black via-slate-900 to-blue-950 font-sans overflow-hidden">
         <div className="flex flex-col items-center">
           <h1 className="text-4xl font-bold mb-10 text-white min-h-[3rem] flex items-center whitespace-pre">
             {renderStyledText()}
@@ -346,7 +346,7 @@ export default function Home() {
         </div>
 
         {isMobile ? (
-          <div className="fixed top-20 right-5 z-20">
+          <div className="fixed top-5 left-5 z-20">
             {spotifyData.isPlaying && spotifyData.albumImageUrl ? (
               <div className="relative w-16 h-16 rounded-lg overflow-hidden shadow-lg">
                 <Image
@@ -360,9 +360,6 @@ export default function Home() {
           </div>
         ) : (
           <div className="fixed right-0 top-1/2 -translate-y-1/2 w-80 bg-slate-900/20 backdrop-blur-sm p-6 rounded-l-lg border-l border-t border-b border-white/10">
-            <h2 className="text-lg font-bold mb-6 text-white text-center">
-              WHAT I&apos;M <span className="text-blue-300 italic">LISTENING TO</span>
-            </h2>
             {spotifyData.isPlaying && spotifyData.title ? (
               <div className="space-y-4">
                 {spotifyData.albumImageUrl && (
