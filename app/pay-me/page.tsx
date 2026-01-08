@@ -51,6 +51,7 @@ export default function PayMePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [helcimLoaded, setHelcimLoaded] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -111,20 +112,29 @@ export default function PayMePage() {
 
     try {
       if (paymentMethod === "wallets") {
-        console.log("[v0] Checking Helcim availability...")
+        console.log("[v0] Starting Helcim payment process...")
+        console.log("[v0] helcimLoaded state:", helcimLoaded)
+        console.log("[v0] window.appendHelcimIframe exists:", !!window.appendHelcimIframe)
+        console.log(
+          "[v0] window object keys:",
+          Object.keys(window).filter((k) => k.toLowerCase().includes("helcim")),
+        )
 
-        // Wait up to 3 seconds for Helcim script to load
-        let retries = 6
+        // Wait up to 5 seconds for Helcim script to load
+        let retries = 10
         while (retries > 0 && !window.appendHelcimIframe) {
+          console.log("[v0] Waiting for Helcim script, retries left:", retries)
           await new Promise((resolve) => setTimeout(resolve, 500))
           retries--
         }
 
         if (!window.appendHelcimIframe) {
+          console.error("[v0] Helcim script failed to load after 5 seconds")
+          console.error("[v0] Available window properties:", Object.keys(window).slice(0, 20))
           throw new Error("Helcim payment system not loaded. Please refresh the page and try again.")
         }
 
-        console.log("[v0] Initializing Helcim payment...")
+        console.log("[v0] Helcim script is ready, initializing payment...")
         const response = await fetch("/api/helcim-initialize", {
           method: "POST",
           headers: {
@@ -141,7 +151,7 @@ export default function PayMePage() {
         }
 
         const { checkoutToken } = await response.json()
-        console.log("[v0] Helcim checkout token received")
+        console.log("[v0] Helcim checkout token received:", checkoutToken)
 
         window.appendHelcimIframe({
           token: checkoutToken,
@@ -248,8 +258,12 @@ export default function PayMePage() {
     <>
       <Script
         src="https://myhelcim.com/js/version2/helcim-pay.js"
-        strategy="beforeInteractive"
-        onLoad={() => console.log("[v0] Helcim script loaded successfully")}
+        strategy="afterInteractive"
+        onLoad={() => {
+          console.log("[v0] Helcim script loaded successfully")
+          console.log("[v0] window.appendHelcimIframe available:", !!window.appendHelcimIframe)
+          setHelcimLoaded(true)
+        }}
         onError={(e) => {
           console.error("[v0] Failed to load Helcim script:", e)
           setError("Failed to load payment system. Please refresh the page.")
