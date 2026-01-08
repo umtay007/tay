@@ -123,40 +123,21 @@ export default function PayMePage() {
       return
     }
 
-    if (paymentMethod !== "cashapp" && paymentMethod !== "wallets") {
+    if (paymentMethod === "wallets") {
       if (!amount || Number.parseFloat(amount) <= 0) {
         setError("Please enter a valid amount")
         return
       }
-    }
 
-    if (!termsAccepted) {
-      setError("You must accept the terms of service")
-      return
-    }
+      if (!termsAccepted) {
+        setError("You must accept the terms of service")
+        return
+      }
 
-    if (paymentMethod === "paypal") {
-      window.open("https://www.paypal.me/TrystanClifton67", "_blank")
-      router.push("/pay-me/success?method=paypal")
-      return
-    }
+      setLoading(true)
+      setError(null)
 
-    if (paymentMethod === "venmo") {
-      window.open("https://venmo.com/u/ttj804", "_blank")
-      router.push("/pay-me/success?method=venmo")
-      return
-    }
-
-    if ((paymentMethod === "cashapp" || paymentMethod === "wallets") && (!amount || Number.parseFloat(amount) <= 0)) {
-      router.push(`/pay-me/success?method=${paymentMethod}`)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      if (paymentMethod === "wallets") {
+      try {
         const response = await fetch("/api/helcim-initialize", {
           method: "POST",
           headers: {
@@ -211,9 +192,49 @@ export default function PayMePage() {
           },
         })
 
+        // Modal is now open, stop loading state
+        setLoading(false)
+        return
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unknown error occurred")
+        setLoading(false)
         return
       }
+    }
 
+    if (paymentMethod !== "cashapp" && paymentMethod !== "wallets") {
+      if (!amount || Number.parseFloat(amount) <= 0) {
+        setError("Please enter a valid amount")
+        return
+      }
+    }
+
+    if (!termsAccepted) {
+      setError("You must accept the terms of service")
+      return
+    }
+
+    if (paymentMethod === "paypal") {
+      window.open("https://www.paypal.me/TrystanClifton67", "_blank")
+      router.push("/pay-me/success?method=paypal")
+      return
+    }
+
+    if (paymentMethod === "venmo") {
+      window.open("https://venmo.com/u/ttj804", "_blank")
+      router.push("/pay-me/success?method=venmo")
+      return
+    }
+
+    if (paymentMethod === "cashapp" && (!amount || Number.parseFloat(amount) <= 0)) {
+      router.push(`/pay-me/success?method=${paymentMethod}`)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
       const response = await fetch("/api/create-payment-session", {
         method: "POST",
         headers: {
