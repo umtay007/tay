@@ -51,7 +51,6 @@ export default function PayMePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
-  const [helcimScriptLoaded, setHelcimScriptLoaded] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -112,10 +111,20 @@ export default function PayMePage() {
 
     try {
       if (paymentMethod === "wallets") {
-        if (!helcimScriptLoaded || !window.appendHelcimIframe) {
-          throw new Error("Helcim payment system not loaded. Please refresh and try again.")
+        console.log("[v0] Checking Helcim availability...")
+
+        // Wait up to 3 seconds for Helcim script to load
+        let retries = 6
+        while (retries > 0 && !window.appendHelcimIframe) {
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          retries--
         }
 
+        if (!window.appendHelcimIframe) {
+          throw new Error("Helcim payment system not loaded. Please refresh the page and try again.")
+        }
+
+        console.log("[v0] Initializing Helcim payment...")
         const response = await fetch("/api/helcim-initialize", {
           method: "POST",
           headers: {
@@ -132,6 +141,7 @@ export default function PayMePage() {
         }
 
         const { checkoutToken } = await response.json()
+        console.log("[v0] Helcim checkout token received")
 
         window.appendHelcimIframe({
           token: checkoutToken,
@@ -238,8 +248,12 @@ export default function PayMePage() {
     <>
       <Script
         src="https://myhelcim.com/js/version2/helcim-pay.js"
-        onLoad={() => setHelcimScriptLoaded(true)}
-        onError={() => console.error("[v0] Failed to load Helcim script")}
+        strategy="beforeInteractive"
+        onLoad={() => console.log("[v0] Helcim script loaded successfully")}
+        onError={(e) => {
+          console.error("[v0] Failed to load Helcim script:", e)
+          setError("Failed to load payment system. Please refresh the page.")
+        }}
       />
       <main
         className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 md:p-24 relative overflow-hidden"
