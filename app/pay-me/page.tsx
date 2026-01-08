@@ -37,11 +37,7 @@ type SpotifyData = {
 
 declare global {
   interface Window {
-    appendHelcimIframe?: (config: {
-      token: string
-      onSuccess: (transaction: any) => void
-      onError: (error: any) => void
-    }) => void
+    appendHelcimPayIframe?: (checkoutToken: string) => void
   }
 }
 
@@ -113,24 +109,17 @@ export default function PayMePage() {
     try {
       if (paymentMethod === "wallets") {
         console.log("[v0] Starting Helcim payment process...")
-        console.log("[v0] helcimLoaded state:", helcimLoaded)
-        console.log("[v0] window.appendHelcimIframe exists:", !!window.appendHelcimIframe)
-        console.log(
-          "[v0] window object keys:",
-          Object.keys(window).filter((k) => k.toLowerCase().includes("helcim")),
-        )
+        console.log("[v0] window.appendHelcimPayIframe exists:", !!window.appendHelcimPayIframe)
 
-        // Wait up to 5 seconds for Helcim script to load
         let retries = 10
-        while (retries > 0 && !window.appendHelcimIframe) {
+        while (retries > 0 && !window.appendHelcimPayIframe) {
           console.log("[v0] Waiting for Helcim script, retries left:", retries)
           await new Promise((resolve) => setTimeout(resolve, 500))
           retries--
         }
 
-        if (!window.appendHelcimIframe) {
+        if (!window.appendHelcimPayIframe) {
           console.error("[v0] Helcim script failed to load after 5 seconds")
-          console.error("[v0] Available window properties:", Object.keys(window).slice(0, 20))
           throw new Error("Helcim payment system not loaded. Please refresh the page and try again.")
         }
 
@@ -153,18 +142,30 @@ export default function PayMePage() {
         const { checkoutToken } = await response.json()
         console.log("[v0] Helcim checkout token received:", checkoutToken)
 
-        window.appendHelcimIframe({
-          token: checkoutToken,
-          onSuccess: (transaction) => {
-            console.log("[v0] Payment successful:", transaction)
-            router.push(`/pay-me/success?method=wallets&transactionId=${transaction.transactionId}`)
-          },
-          onError: (error) => {
-            console.error("[v0] Payment error:", error)
-            setError(error.message || "Payment failed. Please try again.")
-            setLoading(false)
-          },
+        const helcimPayJsIdentifierKey = "helcim-pay-js-" + checkoutToken
+
+        window.addEventListener("message", (event) => {
+          if (event.data.eventName === helcimPayJsIdentifierKey) {
+            if (event.data.eventStatus === "ABORTED") {
+              console.error("[v0] Transaction failed!", event.data.eventMessage)
+              setError("Payment failed. Please try again.")
+              setLoading(false)
+            }
+
+            if (event.data.eventStatus === "SUCCESS") {
+              console.log("[v0] Transaction success!", event.data.eventMessage)
+              const transactionData = JSON.parse(event.data.eventMessage)
+              router.push(`/pay-me/success?method=wallets&transactionId=${transactionData.data.data.transactionId}`)
+            }
+
+            if (event.data.eventStatus === "HIDE") {
+              console.log("[v0] Payment modal closed")
+              setLoading(false)
+            }
+          }
         })
+
+        window.appendHelcimPayIframe(checkoutToken)
 
         return
       }
@@ -257,11 +258,11 @@ export default function PayMePage() {
   return (
     <>
       <Script
-        src="https://myhelcim.com/js/version2/helcim-pay.js"
+        src="https://myhelcim.com/js/start.js"
         strategy="afterInteractive"
         onLoad={() => {
           console.log("[v0] Helcim script loaded successfully")
-          console.log("[v0] window.appendHelcimIframe available:", !!window.appendHelcimIframe)
+          console.log("[v0] window.appendHelcimPayIframe available:", !!window.appendHelcimPayIframe)
           setHelcimLoaded(true)
         }}
         onError={(e) => {
