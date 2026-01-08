@@ -34,7 +34,11 @@ type SpotifyData = {
 
 declare global {
   interface Window {
-    appendHelcimPayIframe?: (checkoutToken: string) => void
+    appendHelcimPay?: (config: {
+      checkoutToken: string
+      onSuccess: (data: any) => void
+      onError: (error: any) => void
+    }) => void
   }
 }
 
@@ -170,8 +174,26 @@ export default function PayMePage() {
 
         const { checkoutToken } = await response.json()
 
-        // Redirect to Helcim checkout page
-        window.location.href = `https://myhelcim.com/checkout/${checkoutToken}`
+        // Check if Helcim script loaded
+        if (typeof window.appendHelcimPay !== "function") {
+          throw new Error("Helcim payment system not loaded. Please refresh and try again.")
+        }
+
+        // Open Helcim modal with proper configuration
+        window.appendHelcimPay({
+          checkoutToken,
+          onSuccess: (data) => {
+            console.log("[v0] Helcim payment successful:", data)
+            router.push("/pay-me/success?method=wallets")
+          },
+          onError: (error) => {
+            console.error("[v0] Helcim payment failed:", error)
+            setError("Payment failed. Please try again.")
+            setLoading(false)
+          },
+        })
+
+        // Don't set loading to false here - let the callbacks handle it
         return
       }
 
@@ -213,6 +235,8 @@ export default function PayMePage() {
 
   return (
     <>
+      <div id="helcimPayModal"></div>
+
       <main
         className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 md:p-24 relative overflow-hidden"
         style={{ background: "linear-gradient(135deg, rgb(0, 0, 0), rgb(0, 0, 51), rgb(0, 0, 153))" }}

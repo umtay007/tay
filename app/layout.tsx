@@ -1,5 +1,6 @@
 import type React from "react"
 import "./globals.css"
+import Script from "next/script"
 
 export const metadata = {
   title: "Tay wacky and goofy website",
@@ -39,6 +40,9 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="bg-black">
+      <head>
+        <Script src="https://secure.helcim.app/helcim-pay/v1/lib.js" strategy="beforeInteractive" />
+      </head>
       <body
         className="bg-black min-h-[100dvh]"
         style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
