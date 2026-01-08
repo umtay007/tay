@@ -173,13 +173,31 @@ export default function PayMePage() {
         }
 
         const { checkoutToken } = await response.json()
+        console.log("[v0] Helcim checkout token received:", checkoutToken)
 
-        // Check if Helcim script loaded
-        if (typeof window.appendHelcimPay !== "function") {
+        const waitForHelcim = async (maxRetries = 20): Promise<boolean> => {
+          for (let i = 0; i < maxRetries; i++) {
+            console.log(`[v0] Checking for appendHelcimPay... attempt ${i + 1}/${maxRetries}`)
+            console.log("[v0] window.appendHelcimPay exists:", typeof window.appendHelcimPay)
+
+            if (typeof window.appendHelcimPay === "function") {
+              console.log("[v0] Helcim script loaded successfully!")
+              return true
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500))
+          }
+          return false
+        }
+
+        const helcimLoaded = await waitForHelcim()
+
+        if (!helcimLoaded) {
+          console.error("[v0] Helcim script failed to load after waiting")
+          console.error("[v0] window object keys:", Object.keys(window))
           throw new Error("Helcim payment system not loaded. Please refresh and try again.")
         }
 
-        // Open Helcim modal with proper configuration
+        console.log("[v0] Opening Helcim payment modal...")
         window.appendHelcimPay({
           checkoutToken,
           onSuccess: (data) => {
@@ -193,7 +211,6 @@ export default function PayMePage() {
           },
         })
 
-        // Don't set loading to false here - let the callbacks handle it
         return
       }
 
