@@ -21,6 +21,7 @@ export async function POST(req: Request) {
 
     // Initialize Helcim checkout session
     const requestBody = {
+      paymentType: "purchase",
       amount: amount,
       currency: "USD",
       digitalWallet: {
