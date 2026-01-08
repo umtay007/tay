@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
     console.log("[v0] Sending request to Helcim API:", JSON.stringify(requestBody))
 
-    const response = await fetch("https://api.helcim.com/v2/helcimpay/initialize", {
+    const response = await fetch("https://api.helcim.com/v2/helcim-pay/initialize", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
