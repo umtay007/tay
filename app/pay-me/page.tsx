@@ -137,69 +137,57 @@ export default function PayMePage() {
       setLoading(true)
       setError(null)
 
-      try {
-        const response = await fetch("/api/helcim-initialize", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            amount: Number.parseFloat(amount),
-          }),
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || "Failed to initialize payment")
+      const startCheckout = async () => {
+        // Check if the library is actually there
+        if (typeof window.appendHelcimPay === "undefined") {
+          console.error("Helcim library not loaded yet. Retrying in 500ms...")
+          setTimeout(startCheckout, 500)
+          return
         }
 
-        const { checkoutToken } = await response.json()
-        console.log("[v0] Helcim checkout token received:", checkoutToken)
+        try {
+          // Fetch the checkout token from backend
+          const response = await fetch("/api/helcim-initialize", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              amount: Number.parseFloat(amount),
+            }),
+          })
 
-        const waitForHelcim = async (maxRetries = 20): Promise<boolean> => {
-          for (let i = 0; i < maxRetries; i++) {
-            console.log(`[v0] Checking for appendHelcimPay... attempt ${i + 1}/${maxRetries}`)
-            console.log("[v0] window.appendHelcimPay exists:", typeof window.appendHelcimPay)
-
-            if (typeof window.appendHelcimPay === "function") {
-              console.log("[v0] Helcim script loaded successfully!")
-              return true
-            }
-            await new Promise((resolve) => setTimeout(resolve, 500))
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Failed to initialize payment")
           }
-          return false
+
+          const data = await response.json()
+
+          // Trigger the modal
+          window.appendHelcimPay({
+            checkoutToken: data.checkoutToken,
+            onSuccess: (data) => {
+              console.log("Payment Successful!", data)
+              router.push("/pay-me/success?method=wallets")
+            },
+            onError: (error) => {
+              console.error("Payment Error", error)
+              setError("Payment failed. Please try again.")
+              setLoading(false)
+            },
+          })
+
+          // Modal is now open, stop loading state
+          setLoading(false)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "An unknown error occurred")
+          setLoading(false)
         }
-
-        const helcimLoaded = await waitForHelcim()
-
-        if (!helcimLoaded) {
-          console.error("[v0] Helcim script failed to load after waiting")
-          console.error("[v0] window object keys:", Object.keys(window))
-          throw new Error("Helcim payment system not loaded. Please refresh and try again.")
-        }
-
-        console.log("[v0] Opening Helcim payment modal...")
-        window.appendHelcimPay({
-          checkoutToken,
-          onSuccess: (data) => {
-            console.log("[v0] Helcim payment successful:", data)
-            router.push("/pay-me/success?method=wallets")
-          },
-          onError: (error) => {
-            console.error("[v0] Helcim payment failed:", error)
-            setError("Payment failed. Please try again.")
-            setLoading(false)
-          },
-        })
-
-        // Modal is now open, stop loading state
-        setLoading(false)
-        return
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An unknown error occurred")
-        setLoading(false)
-        return
       }
+
+      await startCheckout()
+      return
     }
 
     if (paymentMethod !== "cashapp" && paymentMethod !== "wallets") {
