@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams } from "next/navigation"
-import { useRouter } from "next/navigation"
+import { useRouter } from "next/router"
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
@@ -14,9 +14,7 @@ import GlitterBackground from "@/components/glitter-background"
 import { AlertCircle } from "lucide-react"
 import { PayPalIcon, VenmoIcon } from "@/components/ui/icons"
 import { loadStripe } from "@stripe/stripe-js"
-import AnimatedText from "@/components/animated-text"
 import SpotifyWidget from "@/components/spotify-widget"
-import Script from "next/script"
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "")
@@ -47,7 +45,6 @@ export default function PayMePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
-  const [helcimLoaded, setHelcimLoaded] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -58,6 +55,36 @@ export default function PayMePage() {
   const hasIncrementedViews = useRef(false)
 
   const canceled = searchParams.get("canceled") === "true"
+
+  useEffect(() => {
+    // Check if script is already loaded
+    if (document.querySelector('script[src="https://myhelcim.com/js/start.js"]')) {
+      console.log("[v0] Helcim script already in DOM")
+      return
+    }
+
+    // Manually create and load the script
+    const script = document.createElement("script")
+    script.src = "https://myhelcim.com/js/start.js"
+    script.async = true
+    script.onload = () => {
+      console.log("[v0] Helcim script loaded via manual insertion")
+      console.log("[v0] window.appendHelcimPayIframe available:", !!window.appendHelcimPayIframe)
+    }
+    script.onerror = () => {
+      console.error("[v0] Failed to load Helcim script via manual insertion")
+    }
+
+    document.head.appendChild(script)
+
+    return () => {
+      // Cleanup: remove script when component unmounts
+      const existingScript = document.querySelector('script[src="https://myhelcim.com/js/start.js"]')
+      if (existingScript) {
+        existingScript.remove()
+      }
+    }
+  }, [])
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, "")
@@ -109,9 +136,13 @@ export default function PayMePage() {
     try {
       if (paymentMethod === "wallets") {
         console.log("[v0] Starting Helcim payment process...")
-        console.log("[v0] window.appendHelcimPayIframe exists:", !!window.appendHelcimPayIframe)
+        console.log("[v0] Checking for window.appendHelcimPayIframe...")
+        console.log(
+          "[v0] window object keys:",
+          Object.keys(window).filter((k) => k.toLowerCase().includes("helcim")),
+        )
 
-        let retries = 10
+        let retries = 20
         while (retries > 0 && !window.appendHelcimPayIframe) {
           console.log("[v0] Waiting for Helcim script, retries left:", retries)
           await new Promise((resolve) => setTimeout(resolve, 500))
@@ -119,7 +150,8 @@ export default function PayMePage() {
         }
 
         if (!window.appendHelcimPayIframe) {
-          console.error("[v0] Helcim script failed to load after 5 seconds")
+          console.error("[v0] Helcim script failed to load after 10 seconds")
+          console.log("[v0] Final window check:", typeof window.appendHelcimPayIframe)
           throw new Error("Helcim payment system not loaded. Please refresh the page and try again.")
         }
 
@@ -257,19 +289,6 @@ export default function PayMePage() {
 
   return (
     <>
-      <Script
-        src="https://myhelcim.com/js/start.js"
-        strategy="afterInteractive"
-        onLoad={() => {
-          console.log("[v0] Helcim script loaded successfully")
-          console.log("[v0] window.appendHelcimPayIframe available:", !!window.appendHelcimPayIframe)
-          setHelcimLoaded(true)
-        }}
-        onError={(e) => {
-          console.error("[v0] Failed to load Helcim script:", e)
-          setError("Failed to load payment system. Please refresh the page.")
-        }}
-      />
       <main
         className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 md:p-24 relative overflow-hidden"
         style={{ background: "linear-gradient(135deg, rgb(0, 0, 0), rgb(0, 0, 51), rgb(0, 0, 153))" }}
@@ -301,9 +320,7 @@ export default function PayMePage() {
         </div>
 
         <div className="z-10 w-full max-w-md">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-6 sm:mb-8 text-center relative">
-            <AnimatedText>Pay Me</AnimatedText>
-          </h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-6 sm:mb-8 text-center relative">Pay Me</h1>
           <Card className="w-full bg-card/10 backdrop-blur-md rounded-2xl overflow-hidden shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-center text-white">Quick Payment</CardTitle>
