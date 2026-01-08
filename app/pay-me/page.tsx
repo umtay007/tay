@@ -56,34 +56,53 @@ export default function PayMePage() {
   const canceled = searchParams.get("canceled") === "true"
 
   useEffect(() => {
-    // Check if script is already loaded
-    if (document.querySelector('script[src="https://myhelcim.com/js/start.js"]')) {
-      console.log("[v0] Helcim script already in DOM")
-      return
-    }
-
-    // Manually create and load the script
-    const script = document.createElement("script")
-    script.src = "https://myhelcim.com/js/start.js"
-    script.async = true
-    script.onload = () => {
-      console.log("[v0] Helcim script loaded via manual insertion")
-      console.log("[v0] window.appendHelcimPayIframe available:", !!window.appendHelcimPayIframe)
-    }
-    script.onerror = () => {
-      console.error("[v0] Failed to load Helcim script via manual insertion")
-    }
-
-    document.head.appendChild(script)
-
-    return () => {
-      // Cleanup: remove script when component unmounts
-      const existingScript = document.querySelector('script[src="https://myhelcim.com/js/start.js"]')
-      if (existingScript) {
-        existingScript.remove()
+    const fetchSpotify = async () => {
+      try {
+        const response = await fetch("/api/spotify")
+        const data = await response.json()
+        setSpotifyData(data)
+        if (data.songUrl !== currentSongUrl) {
+          setCurrentSongUrl(data.songUrl)
+          setLocalProgress(data.progressMs || 0)
+        }
+      } catch (error) {
+        console.error("Error fetching Spotify data:", error)
       }
     }
-  }, [])
+
+    fetchSpotify()
+    const spotifyInterval = setInterval(fetchSpotify, 10000)
+
+    const progressInterval = setInterval(() => {
+      setLocalProgress((prev) => {
+        if (!spotifyData.isPlaying || !spotifyData.durationMs) return prev
+        const newProgress = prev + 1000
+        return newProgress <= spotifyData.durationMs ? newProgress : prev
+      })
+    }, 1000)
+
+    const incrementPageViews = async () => {
+      if (hasIncrementedViews.current) {
+        return
+      }
+      hasIncrementedViews.current = true
+
+      try {
+        const response = await fetch("/api/views?page=pay_me_views")
+        const data = await response.json()
+        setPageViews(data.views)
+      } catch (error) {
+        console.error("Error fetching page views:", error)
+      }
+    }
+
+    incrementPageViews()
+
+    return () => {
+      clearInterval(spotifyInterval)
+      clearInterval(progressInterval)
+    }
+  }, [spotifyData.isPlaying, spotifyData.durationMs, currentSongUrl])
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, "")
@@ -134,27 +153,6 @@ export default function PayMePage() {
 
     try {
       if (paymentMethod === "wallets") {
-        console.log("[v0] Starting Helcim payment process...")
-        console.log("[v0] Checking for window.appendHelcimPayIframe...")
-        console.log(
-          "[v0] window object keys:",
-          Object.keys(window).filter((k) => k.toLowerCase().includes("helcim")),
-        )
-
-        let retries = 20
-        while (retries > 0 && !window.appendHelcimPayIframe) {
-          console.log("[v0] Waiting for Helcim script, retries left:", retries)
-          await new Promise((resolve) => setTimeout(resolve, 500))
-          retries--
-        }
-
-        if (!window.appendHelcimPayIframe) {
-          console.error("[v0] Helcim script failed to load after 10 seconds")
-          console.log("[v0] Final window check:", typeof window.appendHelcimPayIframe)
-          throw new Error("Helcim payment system not loaded. Please refresh the page and try again.")
-        }
-
-        console.log("[v0] Helcim script is ready, initializing payment...")
         const response = await fetch("/api/helcim-initialize", {
           method: "POST",
           headers: {
@@ -171,33 +169,9 @@ export default function PayMePage() {
         }
 
         const { checkoutToken } = await response.json()
-        console.log("[v0] Helcim checkout token received:", checkoutToken)
 
-        const helcimPayJsIdentifierKey = "helcim-pay-js-" + checkoutToken
-
-        window.addEventListener("message", (event) => {
-          if (event.data.eventName === helcimPayJsIdentifierKey) {
-            if (event.data.eventStatus === "ABORTED") {
-              console.error("[v0] Transaction failed!", event.data.eventMessage)
-              setError("Payment failed. Please try again.")
-              setLoading(false)
-            }
-
-            if (event.data.eventStatus === "SUCCESS") {
-              console.log("[v0] Transaction success!", event.data.eventMessage)
-              const transactionData = JSON.parse(event.data.eventMessage)
-              router.push(`/pay-me/success?method=wallets&transactionId=${transactionData.data.data.transactionId}`)
-            }
-
-            if (event.data.eventStatus === "HIDE") {
-              console.log("[v0] Payment modal closed")
-              setLoading(false)
-            }
-          }
-        })
-
-        window.appendHelcimPayIframe(checkoutToken)
-
+        // Redirect to Helcim checkout page
+        window.location.href = `https://myhelcim.com/checkout/${checkoutToken}`
         return
       }
 
@@ -229,55 +203,6 @@ export default function PayMePage() {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    const fetchSpotify = async () => {
-      try {
-        const response = await fetch("/api/spotify")
-        const data = await response.json()
-        setSpotifyData(data)
-        if (data.songUrl !== currentSongUrl) {
-          setCurrentSongUrl(data.songUrl)
-          setLocalProgress(data.progressMs || 0)
-        }
-      } catch (error) {
-        console.error("Error fetching Spotify data:", error)
-      }
-    }
-
-    fetchSpotify()
-    const spotifyInterval = setInterval(fetchSpotify, 10000)
-
-    const progressInterval = setInterval(() => {
-      setLocalProgress((prev) => {
-        if (!spotifyData.isPlaying || !spotifyData.durationMs) return prev
-        const newProgress = prev + 1000
-        return newProgress <= spotifyData.durationMs ? newProgress : prev
-      })
-    }, 1000)
-
-    const incrementPageViews = async () => {
-      if (hasIncrementedViews.current) {
-        return
-      }
-      hasIncrementedViews.current = true
-
-      try {
-        const response = await fetch("/api/views?page=pay_me_views")
-        const data = await response.json()
-        setPageViews(data.views)
-      } catch (error) {
-        console.error("Error fetching page views:", error)
-      }
-    }
-
-    incrementPageViews()
-
-    return () => {
-      clearInterval(spotifyInterval)
-      clearInterval(progressInterval)
-    }
-  }, [spotifyData.isPlaying, spotifyData.durationMs, currentSongUrl])
 
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000)
