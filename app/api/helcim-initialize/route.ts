@@ -24,10 +24,6 @@ export async function POST(req: Request) {
       paymentType: "purchase",
       amount: amount,
       currency: "USD",
-      digitalWallet: {
-        "google-pay": 1,
-        "apple-pay": 1,
-      },
     }
 
     console.log("[v0] Sending request to Helcim API:", JSON.stringify(requestBody))
