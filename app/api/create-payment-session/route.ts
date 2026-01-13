@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { amount, paymentMethod, isApplePay } = body
+    const { amount, paymentMethod } = body
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       paymentMethodTypes.push("card")
     } else if (paymentMethod === "revolut_pay") {
       paymentMethodTypes.push("revolut_pay")
-      currency = "gbp" // Revolut Pay supports EUR, GBP, RON, HUF, PLN, DKK - using GBP
+      currency = "gbp"
     } else if (paymentMethod === "ukbt") {
       return NextResponse.json(
         {
@@ -54,13 +54,11 @@ export async function POST(request: Request) {
               description: `Payment via ${
                 paymentMethod === "cashapp"
                   ? "Cash App"
-                  : paymentMethod === "ukbt"
-                    ? "UK Bank Transfer (FPS)"
+                  : paymentMethod === "wallets"
+                    ? "Google Pay / Apple Pay"
                     : paymentMethod === "revolut_pay"
                       ? "Revolut Pay"
-                      : isApplePay
-                        ? "Apple Pay"
-                        : "Digital Wallet"
+                      : "Payment"
               }`,
             },
             unit_amount: Math.round(amount * 100),
@@ -69,7 +67,7 @@ export async function POST(request: Request) {
         },
       ],
       mode: "payment",
-      success_url: `${baseUrl}/pay-me/success?session_id={CHECKOUT_SESSION_ID}&method=${paymentMethod}${isApplePay ? "&apple_pay=true" : ""}`,
+      success_url: `${baseUrl}/pay-me/success?session_id={CHECKOUT_SESSION_ID}&method=${paymentMethod}`,
       cancel_url: `${baseUrl}/pay-me?canceled=true`,
     }
 

@@ -32,16 +32,6 @@ type SpotifyData = {
   durationMs?: number
 }
 
-declare global {
-  interface Window {
-    appendHelcimPay?: (config: {
-      checkoutToken: string
-      onSuccess: (data: any) => void
-      onError: (error: any) => void
-    }) => void
-  }
-}
-
 export default function PayMePage() {
   const [amount, setAmount] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<"cashapp" | "wallets" | "paypal" | "venmo" | "ach">("cashapp")
@@ -123,9 +113,9 @@ export default function PayMePage() {
       return
     }
 
-    if (paymentMethod === "wallets") {
-      if (!amount || Number.parseFloat(amount) <= 0) {
-        setError("Please enter a valid amount")
+    if (paymentMethod === "wallets" || paymentMethod === "cashapp") {
+      if (paymentMethod === "wallets" && (!amount || Number.parseFloat(amount) <= 0)) {
+        setError("Please enter a valid amount for Google Pay/Apple Pay")
         return
       }
 
@@ -137,68 +127,34 @@ export default function PayMePage() {
       setLoading(true)
       setError(null)
 
-      const startCheckout = async () => {
-        // Check if the library is actually there
-        if (typeof window.appendHelcimPay === "undefined") {
-          console.error("Helcim library not loaded yet. Retrying in 500ms...")
-          setTimeout(startCheckout, 500)
-          return
+      try {
+        const response = await fetch("/api/create-payment-session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount: Number.parseFloat(amount),
+            paymentMethod,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to create payment session")
         }
 
-        try {
-          // Fetch the checkout token from backend
-          const response = await fetch("/api/helcim-initialize", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              amount: Number.parseFloat(amount),
-            }),
-          })
+        const { url } = await response.json()
 
-          if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.error || "Failed to initialize payment")
-          }
-
-          const data = await response.json()
-
-          // Trigger the modal
-          window.appendHelcimPay({
-            checkoutToken: data.checkoutToken,
-            onSuccess: (data) => {
-              console.log("Payment Successful!", data)
-              router.push("/pay-me/success?method=wallets")
-            },
-            onError: (error) => {
-              console.error("Payment Error", error)
-              setError("Payment failed. Please try again.")
-              setLoading(false)
-            },
-          })
-
-          // Modal is now open, stop loading state
-          setLoading(false)
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "An unknown error occurred")
-          setLoading(false)
+        if (!url) {
+          throw new Error("Failed to create checkout session")
         }
+
+        window.location.href = url
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unknown error occurred")
+        setLoading(false)
       }
-
-      await startCheckout()
-      return
-    }
-
-    if (paymentMethod !== "cashapp" && paymentMethod !== "wallets") {
-      if (!amount || Number.parseFloat(amount) <= 0) {
-        setError("Please enter a valid amount")
-        return
-      }
-    }
-
-    if (!termsAccepted) {
-      setError("You must accept the terms of service")
       return
     }
 
@@ -213,43 +169,6 @@ export default function PayMePage() {
       router.push("/pay-me/success?method=venmo")
       return
     }
-
-    if (paymentMethod === "cashapp" && (!amount || Number.parseFloat(amount) <= 0)) {
-      router.push(`/pay-me/success?method=${paymentMethod}`)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch("/api/create-payment-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount: Number.parseFloat(amount),
-          paymentMethod,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to create payment session")
-      }
-
-      const { url } = await response.json()
-
-      if (!url) {
-        throw new Error("Failed to create checkout session")
-      }
-
-      window.location.href = url
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred")
-      setLoading(false)
-    }
   }
 
   const formatTime = (ms: number) => {
@@ -261,8 +180,6 @@ export default function PayMePage() {
 
   return (
     <>
-      <div id="helcimPayModal"></div>
-
       <main
         className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 md:p-24 relative overflow-hidden"
         style={{ background: "linear-gradient(135deg, rgb(0, 0, 0), rgb(0, 0, 51), rgb(0, 0, 153))" }}
@@ -503,13 +420,13 @@ function getPaymentMethodName(method: string): string {
       return "Cash App"
     case "wallets":
       return "Google Pay/Apple Pay"
-    case "ach":
-      return "Bank Transfer"
     case "paypal":
       return "PayPal"
     case "venmo":
       return "Venmo"
+    case "ach":
+      return "Bank Transfer"
     default:
-      return method
+      return "Unknown"
   }
 }
