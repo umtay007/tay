@@ -12,14 +12,15 @@ export default function UKBTPage() {
   const router = useRouter()
   const [copiedField, setCopiedField] = useState<string | null>(null)
 
+  // Clear Junction Limited - Updated March 2026
   const bankDetails = {
-    accountName: "Trystan Clifton",
-    accountNumber: "02328150",
-    sortCode: "041907",
-    swiftCode: "AIRWGB22XXX",
-    iban: "GB62AIRW04190702328150",
-    bankName: "AIRWALLEX (UK) LIMITED",
-    bankAddress: "Labs House 15-19 Bloomsbury Way, London, United Kingdom, WC1A 2TH",
+    accountName: "Trystan Julius Clifton",
+    accountNumber: "41876337",
+    sortCode: "041307",
+    swiftCode: "CLJUGB21XXX",
+    iban: "GB82CLJU04130741876337",
+    bankName: "Clear Junction Limited",
+    bankAddress: "4th Floor Imperial House, 15 Kingsway, London, United Kingdom, WC2B 6UN",
   }
 
   const copyToClipboard = (text: string, field: string) => {
@@ -47,7 +48,7 @@ export default function UKBTPage() {
 
         <Card className="bg-white/10 backdrop-blur-md border-white/20">
           <CardHeader>
-            <CardTitle className="text-white text-center text-xl">Bank Details (GBP)</CardTitle>
+            <CardTitle className="text-white text-center text-xl">Bank Details! (GBP)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <BankDetailRow
@@ -94,7 +95,7 @@ export default function UKBTPage() {
             />
 
             <div className="bg-yellow-500/20 border border-yellow-500/50 text-white p-4 rounded-xl mt-5">
-              <p className="text-sm font-semibold mb-1">⚠️ Important</p>
+              <p className="text-sm font-semibold mb-1">Important</p>
               <p className="text-sm">
                 After completing your transfer, please provide proof of payment (screenshot or transaction details) to
                 confirm your payment.
