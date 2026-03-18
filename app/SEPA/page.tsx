@@ -11,13 +11,14 @@ export default function SEPAPage() {
   const router = useRouter()
   const [copied, setCopied] = useState<string | null>(null)
 
+  // Clear Junction Limited - Updated March 2026
   const bankDetails = {
-    accountName: "Trystan Clifton",
-    iban: "NL80AINH6721240344",
-    swift: "AINHNL22",
-    accountLocation: "Netherlands (Europe)",
-    bankName: "Airwallex (Netherlands) B.V.",
-    bankAddress: "Vijzelstraat, 68-78, Amsterdam, Netherlands, 1016BP",
+    accountName: "Trystan Julius Clifton",
+    accountNumber: "41876337",
+    iban: "GB82CLJU04130741876337",
+    swift: "CLJUGB21XXX",
+    bankName: "Clear Junction Limited",
+    bankAddress: "4th Floor Imperial House, 15 Kingsway, London, United Kingdom, WC2B 6UN",
   }
 
   const copyToClipboard = (text: string, field: string) => {
@@ -30,7 +31,6 @@ export default function SEPAPage() {
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-black via-gray-800 to-gray-600 overflow-hidden">
       <GlitterBackground color="156, 163, 175" />
 
-      {/* Rain effect */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {[...Array(30)].map((_, i) => (
           <div
@@ -79,7 +79,7 @@ export default function SEPAPage() {
         <Card className="bg-white/10 backdrop-blur-md border-white/20 p-6">
           <div className="space-y-5">
             <div>
-              <label className="text-white/70 text-sm mb-2 block">Account Name</label>
+              <label className="text-white/70 text-sm mb-2 block">Account Holder</label>
               <div className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-white/10">
                 <span className="text-white font-medium">{bankDetails.accountName}</span>
                 <Button
@@ -89,6 +89,21 @@ export default function SEPAPage() {
                   onClick={() => copyToClipboard(bankDetails.accountName, "accountName")}
                 >
                   {copied === "accountName" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-white/70 text-sm mb-2 block">Account Number</label>
+              <div className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-white/10">
+                <span className="text-white font-mono">{bankDetails.accountNumber}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/10 h-9 w-9"
+                  onClick={() => copyToClipboard(bankDetails.accountNumber, "accountNumber")}
+                >
+                  {copied === "accountNumber" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
@@ -119,21 +134,6 @@ export default function SEPAPage() {
                   onClick={() => copyToClipboard(bankDetails.swift, "swift")}
                 >
                   {copied === "swift" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-white/70 text-sm mb-2 block">Account Location</label>
-              <div className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-white/10">
-                <span className="text-white font-medium">{bankDetails.accountLocation}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/10 h-9 w-9"
-                  onClick={() => copyToClipboard(bankDetails.accountLocation, "location")}
-                >
-                  {copied === "location" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
@@ -171,7 +171,7 @@ export default function SEPAPage() {
 
           <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
             <p className="text-yellow-200 font-medium text-sm">
-              ⚠️ Important: Please provide proof of transfer after making your SEPA payment
+              Important: Please provide proof of transfer after making your SEPA payment
             </p>
             <p className="text-yellow-200/80 text-xs mt-1">
               SEPA transfers typically take 1-3 business days to process
