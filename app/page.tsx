@@ -335,11 +335,12 @@ export default function Home() {
             </p>
             {result && (
               <p
-                className={`mt-6 text-center text-lg font-bold ${
+                className={`mt-6 text-center text-lg font-bold flex items-center justify-center gap-2 ${
                   result === "THIS IS ME" ? "text-green-400" : "text-yellow-400"
                 }`}
               >
                 {result}
+                {result === "THIS IS ME" && <span>✓</span>}
               </p>
             )}
           </div>
