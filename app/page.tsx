@@ -159,7 +159,7 @@ export default function Home() {
   }, [spotifyData.isPlaying, spotifyData.durationMs, currentSongUrl])
 
   const checkId = () => {
-    const currentIds = ["1346646019693215744", "1385734267627245569"]
+    const currentIds = ["1346646019693215744", "1385734267627245569", "859642591224922162"]
     const oldIds = ["1334528441445257318", "1326545308657782828", "1310761016144957461", "1314010017459863582"]
 
     if (currentIds.includes(discordId.trim())) {
@@ -335,11 +335,12 @@ export default function Home() {
             </p>
             {result && (
               <p
-                className={`mt-6 text-center text-lg font-bold ${
+                className={`mt-6 text-center text-lg font-bold flex items-center justify-center gap-2 ${
                   result === "THIS IS ME" ? "text-green-400" : "text-yellow-400"
                 }`}
               >
                 {result}
+                {result === "THIS IS ME" && <span>✓</span>}
               </p>
             )}
           </div>
