@@ -79,25 +79,26 @@ export function SocialToolbar() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 flex flex-col gap-2">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-slate-900/60 backdrop-blur-md px-3 py-2 rounded-2xl border border-white/10 shadow-2xl">
       {socials.map((social, index) => (
         <a
           key={social.name}
           href={social.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`group flex items-center gap-3 bg-slate-900/40 backdrop-blur-sm px-3 py-2.5 rounded-lg border border-white/10 text-gray-400 transition-all duration-300 ${social.hoverColor}`}
+          className={`relative flex items-center justify-center p-3 rounded-xl text-gray-400 transition-all duration-200 hover:bg-white/10 ${social.hoverColor}`}
           onMouseEnter={() => setHoveredIndex(index)}
           onMouseLeave={() => setHoveredIndex(null)}
+          style={{
+            transform: hoveredIndex === index ? "scale(1.2) translateY(-4px)" : "scale(1)",
+          }}
         >
           {social.icon}
-          <span
-            className={`text-sm font-medium overflow-hidden transition-all duration-300 ${
-              hoveredIndex === index ? "max-w-[100px] opacity-100" : "max-w-0 opacity-0"
-            }`}
-          >
-            {social.name}
-          </span>
+          {hoveredIndex === index && (
+            <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs font-medium rounded-md whitespace-nowrap">
+              {social.name}
+            </span>
+          )}
         </a>
       ))}
     </div>
