@@ -56,9 +56,9 @@ export default function WirePage() {
   )
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 md:p-24 bg-gradient-to-br from-red-700 via-orange-600 to-yellow-400">
-      <GlitterBackground color="234, 88, 12" />
-      <RainBackground color="rgba(234, 88, 12, 0.3)" />
+    <main className="relative flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 md:p-24 bg-gradient-to-br from-red-950 via-red-900 to-yellow-800">
+      <GlitterBackground color="180, 83, 9" />
+      <RainBackground color="rgba(180, 83, 9, 0.4)" />
 
       <div className="relative z-10 w-full max-w-3xl">
         <Button
