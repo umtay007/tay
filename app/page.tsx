@@ -288,24 +288,24 @@ export default function Home() {
       />
 
       <div
-        className="fixed z-50 top-5 right-5 pointer-events-auto cursor-pointer transition-all duration-300"
-        style={{
-          animationName: "spin",
-          animationDuration: "8s",
-          animationTimingFunction: "linear",
-          animationIterationCount: "infinite",
-          animationPlayState: isDvdHovered ? "paused" : "running",
-          opacity: isDvdHovered ? 0.9 : 0.4,
-          filter: isDvdHovered
-            ? "drop-shadow(0 0 5px rgba(255,255,255,0.4)) drop-shadow(0 0 10px rgba(147,197,253,0.3))"
-            : "none",
-        }}
+        className="fixed z-50 top-5 right-5 pointer-events-auto cursor-pointer"
         onMouseEnter={() => setIsDvdHovered(true)}
         onMouseLeave={() => setIsDvdHovered(false)}
         onClick={() => window.open("https://en.wikipedia.org/wiki/Stitch_(Lilo_%26_Stitch)", "_blank")}
       >
-        <div className="w-[80px] h-[80px] rounded-full overflow-hidden bg-gradient-to-br from-blue-600/80 to-purple-600/80 backdrop-blur-sm border-2 border-white/20 shadow-lg">
-          <Image src="/images/image.png" alt="DVD Logo" width={80} height={80} className="object-cover opacity-90" />
+        <div 
+          className="w-[80px] h-[80px] rounded-full overflow-hidden bg-gradient-to-br from-blue-600/80 to-purple-600/80 backdrop-blur-sm border-2 border-white/20 shadow-lg transition-all duration-500 ease-out"
+          style={{
+            animation: "spin 8s linear infinite",
+            animationPlayState: isDvdHovered ? "paused" : "running",
+            opacity: isDvdHovered ? 1 : 0.5,
+            transform: isDvdHovered ? "scale(1.1)" : "scale(1)",
+            boxShadow: isDvdHovered 
+              ? "0 0 20px rgba(147,197,253,0.5), 0 0 40px rgba(147,197,253,0.3)" 
+              : "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+          }}
+        >
+          <Image src="/images/image.png" alt="DVD Logo" width={80} height={80} className="object-cover" />
         </div>
       </div>
 

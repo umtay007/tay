@@ -41,52 +41,18 @@ export default function BankPage() {
 
           <Card
             className="cursor-pointer hover:scale-105 transition-transform bg-white/10 backdrop-blur-md border-white/20"
-            onClick={() => router.push("/ukbt")}
+            onClick={() => router.push("/wire")}
           >
             <CardHeader>
               <CardTitle className="text-white text-xl flex items-center justify-between">
-                UK Bank Transfer (GBP)
-                <div className="h-10 w-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                  £
+                Wire Transfer (USD)
+                <div className="h-10 w-10 bg-amber-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                  $
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-white/60 text-xs mt-1">BACS, CHAPS, Faster Payments</p>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="cursor-pointer hover:scale-105 transition-transform bg-white/10 backdrop-blur-md border-white/20"
-            onClick={() => router.push("/sepa")}
-          >
-            <CardHeader>
-              <CardTitle className="text-white text-xl flex items-center justify-between">
-                SEPA (EUR)
-                <div className="h-10 w-10 bg-gray-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                  €
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-white/60 text-xs mt-1">SEPA Transfer - 1-3 business days</p>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="cursor-pointer hover:scale-105 transition-transform bg-white/10 backdrop-blur-md border-white/20"
-            onClick={() => router.push("/cad")}
-          >
-            <CardHeader>
-              <CardTitle className="text-white text-xl flex items-center justify-between">
-                Interac / EFT (CAD)
-                <div className="h-10 w-10 bg-red-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                  🍁
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-white/60 text-xs mt-1">EFT & Interac e-Transfer - 0-1 business days</p>
+              <p className="text-white/60 text-xs mt-1">Domestic & International Wire</p>
             </CardContent>
           </Card>
         </div>
