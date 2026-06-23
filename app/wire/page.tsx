@@ -80,10 +80,6 @@ export default function WirePage() {
             <CardContent className="space-y-4">
               <Field label="Bank Name" value={details.bankName} field="bankName" />
               <Field label="Bank Address" value={details.bankAddress} field="bankAddress" />
-              <p className="text-white/70 text-sm leading-relaxed">
-                Found partners with Lead Bank to process wires. Found does not accept checks or documents sent to this or
-                any other mailing address.
-              </p>
             </CardContent>
           </Card>
 
